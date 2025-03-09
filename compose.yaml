@@ -1,0 +1,14 @@
+services:
+  restaurant-db:
+    restart: always
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=restaurant
+    volumes:
+      - restaurant-db-data:/var/lib/postgresql/data
+    ports:
+      - 8201:5432
+
+volumes:
+  restaurant-db-data: {}

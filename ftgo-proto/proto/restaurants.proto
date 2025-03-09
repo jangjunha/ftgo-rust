@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "me.jangjunha.ftgo.restaurant_service.api";
+
+package me.jangjunha.ftgo.restaurant_service;
+
+import "google/protobuf/empty.proto";
+import "money.proto";
+
+service RestaurantService {
+  rpc CreateRestaurant(CreateRestaurantPayload) returns (CreateRestaurantResponse) {}
+  rpc GetRestaurant(GetRestaurantPayload) returns (GetRestaurantResponse) {}
+  rpc ListRestaurant(google.protobuf.Empty) returns (ListRestaurantsResponse) {}
+}
+
+message Restaurant {
+  string id = 1;
+  string name = 2;
+  string address = 3;
+  repeated MenuItem menuItems = 4;
+}
+
+message MenuItem {
+  string id = 1;
+  string name = 2;
+  me.jangjunha.ftgo.common.Money price = 3;
+}
+
+message CreateRestaurantPayload {
+  string name = 1;
+  string address = 2;
+  repeated MenuItem menuItems = 3;
+}
+
+message CreateRestaurantResponse {
+  string id = 1;
+}
+
+message GetRestaurantPayload {
+  string restaurantId = 1;
+}
+
+message GetRestaurantResponse {
+  Restaurant restaurant = 1;
+}
+
+message ListRestaurantsResponse {
+  repeated Restaurant restaurants = 1;
+}

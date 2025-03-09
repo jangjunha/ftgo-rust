@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "me.jangjunha.ftgo.order_service.api";
+
+package me.jangjunha.ftgo.order_service;
+
+import "google/protobuf/timestamp.proto";
+import "money.proto";
+
+service OrderService {
+  rpc getOrder(GetOrderPayload) returns (Order) {}
+  rpc createOrder(CreateOrderPayload) returns (Order) {}
+}
+
+message GetOrderPayload {
+  string id = 1;
+}
+
+message CreateOrderPayload {
+  string restaurantId = 1;
+  string consumerId = 2;
+  repeated MenuItemIdAndQuantity items = 3;
+  string deliveryAddress = 4;
+}
+
+enum OrderState {
+    APPROVAL_PENDING = 0;
+    APPROVED = 1;
+    REJECTED = 2;
+    CANCEL_PENDING = 3;
+    CANCELLED = 4;
+    REVISION_PENDING = 5;
+}
+
+message Order {
+  string id = 1;
+  OrderState state = 2;
+  string consumerId = 3;
+  string restaurantId = 4;
+  repeated OrderLineItem lineItems = 5;
+  DeliveryInformation deliveryInformation = 6;
+  optional PaymentInformation paymentInformation = 7;
+  me.jangjunha.ftgo.common.Money orderMinimum = 8;
+}
+
+message OrderLineItem {
+  int32 quantity = 1;
+  string menuItemId = 2;
+  string name = 3;
+  me.jangjunha.ftgo.common.Money price = 4;
+}
+
+message MenuItemIdAndQuantity {
+  int32 quantity = 1;
+  string menuItemId = 2;
+}
+
+message DeliveryInformation {
+  google.protobuf.Timestamp deliveryTime = 1;
+  string deliveryAddress = 2;
+}
+
+message PaymentInformation {
+  string paymentToken = 1;
+}

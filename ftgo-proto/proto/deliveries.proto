@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "me.jangjunha.ftgo.delivery_service.api";
+
+package me.jangjunha.ftgo.delivery_service;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service DeliveryService{
+  rpc UpdateCourierAvailability(UpdateCourierAvailabilityPayload) returns (google.protobuf.Empty) {}
+  rpc GetDeliveryStatus(GetDeliveryStatusPayload) returns (DeliveryStatus) {}
+  rpc PickupDelivery(PickupDeliveryPayload) returns (google.protobuf.Empty) {}
+  rpc DropoffDelivery(DropoffDeliveryPayload) returns (google.protobuf.Empty) {}
+  rpc CreateConrier(google.protobuf.Empty) returns (Courier) {}
+  rpc GetCourier(GetCourierPayload) returns (Courier) {}
+  rpc GetCourierPlan(GetCourierPayload) returns (CourierPlan) {}
+}
+
+message GetCourierPayload {
+  string courierId = 1;
+}
+
+message UpdateCourierAvailabilityPayload {
+  string courierId = 1;
+  bool available = 2;
+}
+
+message GetDeliveryStatusPayload {
+  string deliveryId = 1;
+}
+
+message PickupDeliveryPayload {
+  string deliveryId = 1;
+}
+
+message DropoffDeliveryPayload {
+  string deliveryId = 1;
+}
+
+message DeliveryStatus {
+  DeliveryInfo deliveryInfo = 1;
+  string assignedCourierId = 2;
+  repeated ActionInfo courierActions = 3;
+}
+
+message DeliveryInfo {
+  string id = 1;
+  DeliveryState state = 2;
+  optional google.protobuf.Timestamp pickupTime = 3;
+  optional google.protobuf.Timestamp deliveryTime = 4;
+}
+
+enum DeliveryState {
+  PENDING = 0;
+  SCHEDULED = 1;
+  CANCELLED = 2;
+}
+
+message ActionInfo {
+  DeliveryActionType type = 1;
+}
+
+enum DeliveryActionType {
+  PICKUP = 0;
+  DROPOFF = 1;
+}
+
+message Courier {
+  string id = 1;
+  bool available = 2;
+}
+
+message CourierPlan {
+  repeated CourierAction actions = 1;
+}
+
+message CourierAction {
+  DeliveryActionType type = 1;
+  string deliveryId = 2;
+  string address = 3;
+  google.protobuf.Timestamp time = 4;
+}

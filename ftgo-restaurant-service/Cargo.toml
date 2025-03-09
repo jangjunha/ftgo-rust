@@ -1,0 +1,28 @@
+[package]
+name = "ftgo-restaurant-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bigdecimal = "0.4.7"
+diesel = { version = "2.2.0", features = ["postgres", "numeric", "uuid"] }
+dotenvy = "0.15"
+uuid = { version = "1.15.1", features = ["v4", "fast-rng", "serde"] }
+
+tonic = "*"
+tonic-health = "0.12.3"
+prost = "0.13"
+tokio = { version = "1.0", features = [
+    "rt-multi-thread",
+    "macros",
+    "sync",
+    "time",
+] }
+# tokio-stream = "0.1"
+
+# async-stream = "0.2"
+# serde = { version = "1.0", features = ["derive"] }
+# serde_json = "1.0"
+# rand = "0.8"
+
+ftgo-proto = { path = "../ftgo-proto" }

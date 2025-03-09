@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "me.jangjunha.ftgo.kitchen_service.api";
+
+package me.jangjunha.ftgo.kitchen_service;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service KitchenService {
+  rpc ListTickets(ListTicketPayload) returns (ListTicketResponse) {}
+  rpc GetTicket(GetTicketPayload) returns (Ticket) {}
+  rpc AcceptTicket(AcceptTicketPayload) returns (google.protobuf.Empty) {}
+  rpc PreparingTicket(PreparingTicketPayload) returns (Ticket) {}
+  rpc ReadyForPickupTicket(ReadyForPickupTicketPayload) returns (Ticket) {}
+}
+
+message PreparingTicketPayload {
+  string ticketId = 1;
+}
+
+message ReadyForPickupTicketPayload {
+  string ticketId = 1;
+}
+
+message ListTicketPayload {
+  string restaurantId = 1;
+  uint32 first = 2;
+  string after = 3;
+  uint32 last = 4;
+  string before = 5;
+}
+
+message TicketEdge {
+  Ticket node = 1;
+  string cursor = 2;
+}
+
+message ListTicketResponse {
+  repeated TicketEdge edges = 1;
+}
+
+message GetTicketPayload {
+  string ticketId = 1;
+}
+
+message AcceptTicketPayload {
+  string ticketId = 1;
+  google.protobuf.Timestamp readyBy = 2;
+}
+
+enum TicketState {
+    CREATE_PENDING = 0;
+    AWAITING_ACCEPTANCE = 1;
+    ACCEPTED = 2;
+    PREPARING = 3;
+    READY_FOR_PICKUP = 4;
+    PICKED_UP = 5;
+    CANCEL_PENDING = 6;
+    CANCELLED = 7;
+    REVISION_PENDING = 8;
+}
+
+message Ticket {
+  string id = 1;
+  TicketState state = 2;
+  string restaurantId = 3;
+  optional uint32 sequence = 4;
+  repeated TicketLineItem lineItems = 5;
+
+  optional google.protobuf.Timestamp readyBy = 10;
+  optional google.protobuf.Timestamp acceptTime = 11;
+  optional google.protobuf.Timestamp preparingTime = 12;
+  optional google.protobuf.Timestamp pickedUpTime = 13;
+  optional google.protobuf.Timestamp readyForPickupTime = 14;
+}
+
+message TicketLineItem {
+  int32 quantity = 1;
+  string menuItemId = 2;
+  string name = 3;
+}
