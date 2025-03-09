@@ -9,6 +9,17 @@ services:
       - restaurant-db-data:/var/lib/postgresql/data
     ports:
       - 8201:5432
+  consumer-db:
+    restart: always
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=consumer
+    volumes:
+      - consumer-db-data:/var/lib/postgresql/data
+    ports:
+      - 8202:5432
 
 volumes:
   restaurant-db-data: {}
+  consumer-db-data: {}

@@ -5,3 +5,7 @@ pub mod common {
 pub mod restaurant_service {
     tonic::include_proto!("me.jangjunha.ftgo.restaurant_service");
 }
+
+pub mod consumer_service {
+    tonic::include_proto!("me.jangjunha.ftgo.consumer_service");
+}

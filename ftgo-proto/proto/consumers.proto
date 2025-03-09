@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "me.jangjunha.ftgo.consumer_service.api";
+
+package me.jangjunha.ftgo.consumer_service;
+
+service ConsumerService {
+  rpc CreateConsumer(CreateConsumerPayload) returns (CreateConsumerResponse) {}
+  rpc GetConsumer(GetConsumerPayload) returns (GetConsumerResponse) {}
+}
+
+message Consumer {
+  string id = 1;
+  string name = 2;
+}
+
+message CreateConsumerPayload {
+  string name = 1;
+}
+
+message CreateConsumerResponse {
+  string id = 1;
+}
+
+message GetConsumerPayload {
+  string consumerId = 1;
+}
+
+message GetConsumerResponse {
+  Consumer consumer = 1;
+}
