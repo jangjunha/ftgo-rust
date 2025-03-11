@@ -82,3 +82,23 @@ message CourierAction {
   string address = 3;
   google.protobuf.Timestamp time = 4;
 }
+
+
+/// Events
+
+message DeliveryEvent {
+  oneof event {
+    DeliveryPickedUpEvent deliveryPickedUp = 1;
+    DeliveryDropoffEvent deliveryDropoff = 2;
+  };
+}
+
+message DeliveryPickedUpEvent {
+  string id = 1;
+  google.protobuf.Timestamp pickedUpAt = 2;
+}
+
+message DeliveryDropoffEvent {
+  string id = 1;
+  google.protobuf.Timestamp dropoffAt = 2;
+}

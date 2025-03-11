@@ -132,6 +132,16 @@ services:
       - kitchen-db-data:/var/lib/postgresql/data
     ports:
       - 8205:5432
+  delivery-db:
+    restart: always
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=delivery
+    volumes:
+      - delivery-db-data:/var/lib/postgresql/data
+    ports:
+      - 8208:5432
 
   kafka:
     image: apache/kafka-native:3.9.0
@@ -176,3 +186,4 @@ volumes:
   restaurant-db-data: {}
   consumer-db-data: {}
   kitchen-db-data: {}
+  delivery-db-data: {}

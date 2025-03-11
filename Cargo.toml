@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "ftgo-consumer-service",
+    "ftgo-consumer-service", "ftgo-delivery-service",
     "ftgo-kitchen-service",
     "ftgo-proto",
     "ftgo-restaurant-service",
