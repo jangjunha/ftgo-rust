@@ -1,4 +1,5 @@
 use diesel::{insert_into, prelude::*, result::Error::NotFound};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use ftgo_proto::consumer_service::{
     Consumer, CreateConsumerPayload, CreateConsumerResponse, GetConsumerPayload,
     GetConsumerResponse,
@@ -11,6 +12,8 @@ use ftgo_proto::consumer_service::consumer_service_server::{
 };
 
 use ftgo_consumer_service::{establish_connection, models};
+
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 #[derive(Default)]
 pub struct ConsumerServiceImpl {}
@@ -75,7 +78,11 @@ impl ConsumerService for ConsumerServiceImpl {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50052".parse().unwrap();
+    let mut conn = establish_connection();
+    conn.run_pending_migrations(MIGRATIONS)
+        .expect("Failed to run migrations");
+
+    let addr = "[::1]:8102".parse().unwrap();
     let consumer_service = ConsumerServiceImpl::default();
 
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();

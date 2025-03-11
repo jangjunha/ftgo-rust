@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 diesel = { version = "2.2.0", features = ["postgres", "numeric", "uuid"] }
+diesel_migrations = "2.2.0"
 dotenvy = "0.15"
 uuid = { version = "1.15.1", features = ["v4", "fast-rng", "serde"] }
 
