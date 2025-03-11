@@ -2,7 +2,7 @@ use crate::schema;
 use crate::{models, models::NewOutbox, EVENT_CHANNEL};
 use diesel::{prelude::*, PgConnection};
 use ftgo_proto::kitchen_service::{
-    ticket_event, TicketAcceptedEvent, TicketCreatedEvent, TicketDetails, TicketEvent,
+    kitchen_event, KitchenEvent, TicketAcceptedEvent, TicketCreatedEvent, TicketDetails,
     TicketLineItem, TicketPreparingCompletedEvent, TicketPreparingStartedEvent,
 };
 use prost::Message;
@@ -22,8 +22,8 @@ impl<'a> KitchenEventPublisher<'a> {
         ticket: &models::Ticket,
         line_items: &Vec<models::TicketLineItem>,
     ) {
-        let event = TicketEvent {
-            event: Some(ticket_event::Event::TicketCreated(TicketCreatedEvent {
+        let event = KitchenEvent {
+            event: Some(kitchen_event::Event::TicketCreated(TicketCreatedEvent {
                 id: ticket.id.to_string(),
                 details: Some(TicketDetails {
                     line_items: line_items
@@ -50,8 +50,8 @@ impl<'a> KitchenEventPublisher<'a> {
     }
 
     pub fn ticket_accepted(&mut self, ticket: &models::Ticket) {
-        let event = TicketEvent {
-            event: Some(ticket_event::Event::TicketAccepted(TicketAcceptedEvent {
+        let event = KitchenEvent {
+            event: Some(kitchen_event::Event::TicketAccepted(TicketAcceptedEvent {
                 id: ticket.id.to_string(),
                 ready_by: ticket.ready_by.map(|t| Timestamp {
                     seconds: t.timestamp(),
@@ -72,8 +72,8 @@ impl<'a> KitchenEventPublisher<'a> {
     }
 
     pub fn ticket_preparing_started(&mut self, ticket: &models::Ticket) {
-        let event = TicketEvent {
-            event: Some(ticket_event::Event::TicketPreparingStarted(
+        let event = KitchenEvent {
+            event: Some(kitchen_event::Event::TicketPreparingStarted(
                 TicketPreparingStartedEvent {
                     id: ticket.id.to_string(),
                 },
@@ -92,8 +92,8 @@ impl<'a> KitchenEventPublisher<'a> {
     }
 
     pub fn ticket_preparing_completed(&mut self, ticket: &models::Ticket) {
-        let event = TicketEvent {
-            event: Some(ticket_event::Event::TicketPreparingCompleted(
+        let event = KitchenEvent {
+            event: Some(kitchen_event::Event::TicketPreparingCompleted(
                 TicketPreparingCompletedEvent {
                     id: ticket.id.to_string(),
                 },

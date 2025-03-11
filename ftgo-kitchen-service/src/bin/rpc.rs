@@ -4,6 +4,7 @@ use diesel::prelude::*;
 use diesel::result::Error::NotFound;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use ftgo_kitchen_service::events::KitchenEventPublisher;
+use ftgo_kitchen_service::schema::tickets::previous_state;
 use ftgo_proto::kitchen_service::{
     AcceptTicketPayload, GetTicketPayload, ListTicketPayload, ListTicketResponse,
     PreparingTicketPayload, ReadyForPickupTicketPayload, Ticket, TicketEdge, TicketLineItem,
@@ -194,6 +195,7 @@ impl KitchenService for KitchenServiceImpl {
                 update(tickets)
                     .set((
                         state.eq(ftgo_kitchen_service::models::TicketState::Accepted),
+                        previous_state.eq(Some(result.state)),
                         ready_by.eq(now),
                     ))
                     .filter(id.eq(tid))
@@ -263,6 +265,7 @@ impl KitchenService for KitchenServiceImpl {
                 update(tickets)
                     .set((
                         state.eq(ftgo_kitchen_service::models::TicketState::Preparing),
+                        previous_state.eq(Some(result.state)),
                         preparing_time.eq(now),
                     ))
                     .filter(id.eq(tid))
@@ -332,6 +335,7 @@ impl KitchenService for KitchenServiceImpl {
                 update(tickets)
                     .set((
                         state.eq(ftgo_kitchen_service::models::TicketState::ReadyForPickup),
+                        previous_state.eq(Some(result.state)),
                         ready_for_pickup_time.eq(now),
                     ))
                     .filter(id.eq(tid))

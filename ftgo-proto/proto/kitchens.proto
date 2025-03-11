@@ -86,7 +86,7 @@ message TicketLineItem {
 
 /// Events
 
-message TicketEvent {
+message KitchenEvent {
   oneof event {
     TicketCreatedEvent ticketCreated = 1;
     TicketAcceptedEvent ticketAccepted = 2;
@@ -114,5 +114,37 @@ message TicketPreparingStartedEvent {
 }
 
 message TicketPreparingCompletedEvent {
+  string id = 1;
+}
+
+
+/// Commands
+
+message KitchenCommand {
+  string correlationId = 1;
+  optional string replyChannel = 2;
+  oneof command {
+    CreateTicketCommand createTicket = 3;
+    ConfirmCreateTicketCommand confirmCreateTicket = 4;
+    CancelCreateTicketCommand cancelCreateTicket = 5;
+  };
+}
+
+message CreateTicketCommand {
+  string id = 1;
+  TicketDetails details = 2;
+  string restaurantId = 3;
+}
+
+message CreateTicketCommandReply {
+  string id = 1;
+  int32 sequence = 2;
+}
+
+message ConfirmCreateTicketCommand {
+  string id = 1;
+}
+
+message CancelCreateTicketCommand {
   string id = 1;
 }

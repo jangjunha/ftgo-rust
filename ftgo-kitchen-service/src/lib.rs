@@ -8,6 +8,7 @@ pub mod models;
 pub mod schema;
 
 pub const EVENT_CHANNEL: &str = "kitchen.event";
+pub const COMMAND_CHANNEL: &str = "kitchen.command";
 
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();

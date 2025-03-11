@@ -2,6 +2,7 @@ fn main() {
     tonic_build::configure()
         .compile_protos(
             &[
+                "proto/command.proto",
                 "proto/money.proto",
                 "proto/restaurants.proto",
                 "proto/consumers.proto",
