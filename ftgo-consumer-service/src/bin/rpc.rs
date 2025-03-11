@@ -11,7 +11,7 @@ use ftgo_proto::consumer_service::consumer_service_server::{
     ConsumerService, ConsumerServiceServer,
 };
 
-use ftgo_consumer_service::{establish_connection, models};
+use ftgo_consumer_service::{establish_connection, events::ConsumerEventPublisher, models};
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
@@ -35,6 +35,10 @@ impl ConsumerService for ConsumerServiceImpl {
         let conn = &mut establish_connection();
         conn.transaction::<_, diesel::result::Error, _>(|conn| {
             insert_into(consumers).values(&consumer).execute(conn)?;
+
+            let mut publisher = ConsumerEventPublisher::new(conn);
+            publisher.consumer_created(&consumer);
+
             Ok(())
         })
         .map_err(|_| Status::internal("Failed to create consumer"))?;

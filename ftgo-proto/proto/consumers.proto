@@ -30,3 +30,16 @@ message GetConsumerPayload {
 message GetConsumerResponse {
   Consumer consumer = 1;
 }
+
+
+/// Events
+
+message ConsumerEvent {
+  oneof event {
+    ConsumerCreatedEvent consumerCreated = 1;
+  };
+}
+
+message ConsumerCreatedEvent {
+  string id = 1;
+}

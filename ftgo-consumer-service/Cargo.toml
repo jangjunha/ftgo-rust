@@ -19,8 +19,14 @@ tokio = { version = "1.0", features = [
     "time",
 ] }
 
+kafka = "0.10"
+
 ftgo-proto = { path = "../ftgo-proto" }
 
 [[bin]]
 name = "rpc"
 path = "src/bin/rpc.rs"
+
+[[bin]]
+name = "producer"
+path = "src/bin/producer.rs"
