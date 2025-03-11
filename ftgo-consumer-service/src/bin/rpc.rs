@@ -1,10 +1,8 @@
 use diesel::{insert_into, prelude::*, result::Error::NotFound};
-use dotenvy::dotenv;
 use ftgo_proto::consumer_service::{
     Consumer, CreateConsumerPayload, CreateConsumerResponse, GetConsumerPayload,
     GetConsumerResponse,
 };
-use std::env;
 use tonic::{transport::Server, Request, Response, Status};
 use uuid::Uuid;
 
@@ -12,16 +10,7 @@ use ftgo_proto::consumer_service::consumer_service_server::{
     ConsumerService, ConsumerServiceServer,
 };
 
-pub mod models;
-pub mod schema;
-
-pub fn establish_connection() -> PgConnection {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
-}
+use ftgo_consumer_service::{establish_connection, models};
 
 #[derive(Default)]
 pub struct ConsumerServiceImpl {}
@@ -32,7 +21,7 @@ impl ConsumerService for ConsumerServiceImpl {
         &self,
         request: Request<CreateConsumerPayload>,
     ) -> Result<Response<CreateConsumerResponse>, Status> {
-        use self::schema::consumers::dsl::*;
+        use ftgo_consumer_service::schema::consumers::dsl::*;
 
         let payload = request.into_inner();
         let consumer = models::Consumer {
@@ -56,7 +45,7 @@ impl ConsumerService for ConsumerServiceImpl {
         &self,
         request: Request<GetConsumerPayload>,
     ) -> Result<Response<GetConsumerResponse>, Status> {
-        use self::schema::consumers::dsl::*;
+        use ftgo_consumer_service::schema::consumers::dsl::*;
 
         let payload = request.into_inner();
         let consumer_id = payload
