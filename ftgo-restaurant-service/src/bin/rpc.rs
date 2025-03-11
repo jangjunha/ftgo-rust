@@ -1,9 +1,10 @@
 use bigdecimal::BigDecimal;
 use diesel::{insert_into, prelude::*};
-use dotenvy::dotenv;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use ftgo_proto::common::Money;
-use std::env;
-use tonic::{transport::Server, Request, Response, Status};
+use ftgo_restaurant_service::events::RestaurantEventPublisher;
+use tonic::transport::Server;
+use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
 use ftgo_proto::restaurant_service::restaurant_service_server::{
@@ -14,16 +15,9 @@ use ftgo_proto::restaurant_service::{
     ListRestaurantsResponse, MenuItem, Restaurant,
 };
 
-pub mod models;
-pub mod schema;
+use ftgo_restaurant_service::{establish_connection, models, schema};
 
-pub fn establish_connection() -> PgConnection {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
-}
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 #[derive(Default)]
 pub struct RestaurantServiceImpl {}
@@ -34,8 +28,8 @@ impl RestaurantService for RestaurantServiceImpl {
         &self,
         request: Request<CreateRestaurantPayload>,
     ) -> Result<Response<CreateRestaurantResponse>, Status> {
-        use self::schema::restaurant_menu_items::dsl::*;
-        use self::schema::restaurants::dsl::*;
+        use crate::schema::restaurant_menu_items::dsl::*;
+        use crate::schema::restaurants::dsl::*;
 
         let payload = request.into_inner();
         let restaurant = models::Restaurant {
@@ -67,6 +61,10 @@ impl RestaurantService for RestaurantServiceImpl {
             insert_into(restaurant_menu_items)
                 .values(&menu_items)
                 .execute(conn)?;
+
+            let mut publisher = RestaurantEventPublisher::new(conn);
+            publisher.restaurant_created(&restaurant, &menu_items);
+
             Ok(())
         })
         .map_err(|_| Status::internal("Failed to create restaurant"))?;
@@ -80,7 +78,7 @@ impl RestaurantService for RestaurantServiceImpl {
         &self,
         request: Request<GetRestaurantPayload>,
     ) -> Result<Response<GetRestaurantResponse>, Status> {
-        use self::schema::restaurants::dsl::*;
+        use schema::restaurants::dsl::*;
 
         let payload = request.into_inner();
         let restaurant_id = payload
@@ -123,7 +121,7 @@ impl RestaurantService for RestaurantServiceImpl {
         &self,
         _: Request<()>,
     ) -> Result<Response<ListRestaurantsResponse>, Status> {
-        use self::schema::restaurants::dsl::*;
+        use schema::restaurants::dsl::*;
 
         let conn = &mut establish_connection();
         let results = restaurants
@@ -162,8 +160,12 @@ impl RestaurantService for RestaurantServiceImpl {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse().unwrap();
+pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut conn = establish_connection();
+    conn.run_pending_migrations(MIGRATIONS)
+        .expect("Failed to run migrations");
+
+    let addr = "0.0.0.0:8101".parse().unwrap();
     let restaurant_service = RestaurantServiceImpl::default();
 
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();

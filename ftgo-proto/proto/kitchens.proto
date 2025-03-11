@@ -26,10 +26,10 @@ message ReadyForPickupTicketPayload {
 
 message ListTicketPayload {
   string restaurantId = 1;
-  uint32 first = 2;
-  string after = 3;
-  uint32 last = 4;
-  string before = 5;
+  optional uint32 first = 2;
+  optional string after = 3;
+  optional uint32 last = 4;
+  optional string before = 5;
 }
 
 message TicketEdge {
@@ -80,4 +80,39 @@ message TicketLineItem {
   int32 quantity = 1;
   string menuItemId = 2;
   string name = 3;
+}
+
+
+
+/// Events
+
+message TicketEvent {
+  oneof event {
+    TicketCreatedEvent ticketCreated = 1;
+    TicketAcceptedEvent ticketAccepted = 2;
+    TicketPreparingStartedEvent ticketPreparingStarted = 3;
+    TicketPreparingCompletedEvent TicketPreparingCompleted = 4;
+  };
+}
+
+message TicketDetails {
+  repeated TicketLineItem lineItems = 1;
+}
+
+message TicketCreatedEvent {
+  string id = 1;
+  TicketDetails details = 2;
+}
+
+message TicketAcceptedEvent {
+  string id = 1;
+  google.protobuf.Timestamp readyBy = 10;
+}
+
+message TicketPreparingStartedEvent {
+  string id = 1;
+}
+
+message TicketPreparingCompletedEvent {
+  string id = 1;
 }

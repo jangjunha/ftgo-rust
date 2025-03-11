@@ -48,3 +48,25 @@ message GetRestaurantResponse {
 message ListRestaurantsResponse {
   repeated Restaurant restaurants = 1;
 }
+
+
+/// Events
+
+message RestaurantEvent {
+  oneof event {
+    RestaurantCreatedEvent restaurantCreated = 1;
+    RestaurantMenuRevisedEvent restaurantMenuRevised = 2;
+  };
+}
+
+message RestaurantCreatedEvent {
+  string id = 1;
+  string name = 2;
+  string address = 3;
+  repeated MenuItem menuItems = 4;
+}
+
+message RestaurantMenuRevisedEvent {
+  string id = 1;
+  repeated MenuItem menuItems = 2;
+}

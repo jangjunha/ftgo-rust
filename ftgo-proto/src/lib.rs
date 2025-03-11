@@ -9,3 +9,7 @@ pub mod restaurant_service {
 pub mod consumer_service {
     tonic::include_proto!("me.jangjunha.ftgo.consumer_service");
 }
+
+pub mod kitchen_service {
+    tonic::include_proto!("me.jangjunha.ftgo.kitchen_service");
+}
