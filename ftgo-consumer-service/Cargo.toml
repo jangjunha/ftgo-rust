@@ -28,5 +28,9 @@ name = "rpc"
 path = "src/bin/rpc.rs"
 
 [[bin]]
+name = "consumer"
+path = "src/bin/consumer.rs"
+
+[[bin]]
 name = "producer"
 path = "src/bin/producer.rs"

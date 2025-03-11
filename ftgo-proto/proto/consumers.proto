@@ -5,6 +5,8 @@ option java_package = "me.jangjunha.ftgo.consumer_service.api";
 
 package me.jangjunha.ftgo.consumer_service;
 
+import "money.proto";
+
 service ConsumerService {
   rpc CreateConsumer(CreateConsumerPayload) returns (CreateConsumerResponse) {}
   rpc GetConsumer(GetConsumerPayload) returns (GetConsumerResponse) {}
@@ -42,4 +44,21 @@ message ConsumerEvent {
 
 message ConsumerCreatedEvent {
   string id = 1;
+}
+
+
+/// Commands
+
+message ConsumerCommand {
+  string correlationId = 1;
+  optional string replyChannel = 2;
+  oneof command {
+    ValidateOrderByConsumerCommand validateOrderByConsumer = 3;
+  };
+}
+
+message ValidateOrderByConsumerCommand {
+  string id = 1;
+  string orderId = 2;
+  me.jangjunha.ftgo.common.Money orderTotal = 3;
 }
