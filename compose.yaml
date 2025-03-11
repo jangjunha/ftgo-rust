@@ -26,6 +26,44 @@ services:
       DATABASE_URL: postgres://postgres@restaurant-db/restaurant
       KAFKA_URL: kafka:9094
 
+  ### Consumer
+  consumer-rpc:
+    image: ftgo-consumer-rpc
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-consumer-service
+        - BINARY=rpc
+    environment:
+      DATABASE_URL: postgres://postgres@consumer-db/consumer
+      KAFKA_URL: kafka:9094
+    ports:
+      - 8102:8102
+    depends_on:
+      - consumer-db
+
+  consumer-producer:
+    image: ftgo-consumer-producer
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-consumer-service
+        - BINARY=producer
+    environment:
+      DATABASE_URL: postgres://postgres@consumer-db/consumer
+      KAFKA_URL: kafka:9094
+
+  consumer-consumer:
+    image: ftgo-consumer-consumer
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-consumer-service
+        - BINARY=consumer
+    environment:
+      DATABASE_URL: postgres://postgres@consumer-db/consumer
+      KAFKA_URL: kafka:9094
+
   ### Kitchen
   kitchen-rpc:
     image: ftgo-kitchen-rpc
