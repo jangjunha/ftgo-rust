@@ -2,7 +2,9 @@ use std::env;
 
 use diesel::{Connection, PgConnection};
 use dotenvy::dotenv;
+use ftgo_proto::kitchen_service::kitchen_service_client::KitchenServiceClient;
 
+pub mod events;
 pub mod models;
 pub mod schema;
 
