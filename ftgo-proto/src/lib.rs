@@ -17,3 +17,7 @@ pub mod kitchen_service {
 pub mod delivery_service {
     tonic::include_proto!("me.jangjunha.ftgo.delivery_service");
 }
+
+pub mod accounting_service {
+    tonic::include_proto!("me.jangjunha.ftgo.accounting_service");
+}

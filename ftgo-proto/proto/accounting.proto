@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package me.jangjunha.ftgo.accounting_service;
+
+import "money.proto";
+
+service AccountingService {
+  rpc GetAccount(GetAccountPayload) returns (AccountDetails) {}
+  rpc DepositAccount(DepositAccountPayload) returns (AccountDetails) {}
+  rpc WithdrawAccount(WithdrawAccountPayload) returns (AccountDetails) {}
+  rpc ListAccounts(ListAccountsPayload) returns (ListAccountsResponse) {}
+}
+
+message AccountDetails {
+  string id = 1;
+  me.jangjunha.ftgo.common.Money balance = 2;
+}
+
+message GetAccountPayload {
+  string accountId = 1;
+}
+
+message DepositAccountPayload {
+  string accountId = 1;
+  me.jangjunha.ftgo.common.Money amount = 2;
+}
+
+message WithdrawAccountPayload {
+  string accountId = 1;
+  me.jangjunha.ftgo.common.Money amount = 2;
+}
+
+message ListAccountsPayload {
+  uint32 page_number = 1;
+  uint32 page_size = 2;
+}
+
+message AccountInfo {
+  string id = 1;
+  me.jangjunha.ftgo.common.Money deposit_accumulate = 2;
+  int32 deposit_count = 3;
+  me.jangjunha.ftgo.common.Money withdraw_accumulate = 4;
+  int32 withdraw_count = 5;
+}
+
+message ListAccountsResponse {
+  repeated AccountInfo accounts = 1;
+}
+
+
+/// Events
+
+message AccountingEvent {
+  oneof event {
+    AccountOpened accountOpened = 1;
+    AccountDeposited accountDeposited = 2;
+    AccountWithdrawn accountWithdrawn = 3;
+  };
+}
+
+message AccountOpened {
+  string id = 1;
+}
+
+message AccountDeposited {
+  string id = 1;
+  me.jangjunha.ftgo.common.Money amount = 2;
+  optional string description = 3;
+}
+
+message AccountWithdrawn {
+  string id = 1;
+  me.jangjunha.ftgo.common.Money amount = 2;
+  optional string description = 3;
+}
+
+
+/// Commands
+
+message AccountingCommand {
+  string correlationId = 1;
+  optional string replyChannel = 2;
+  oneof command {
+    DepositCommand deposit = 3;
+    WithdrawCommand withdraw = 4;
+  };
+}
+
+message DepositCommand {
+  string id = 1;
+  me.jangjunha.ftgo.common.Money amount = 2;
+  optional string description = 3;
+}
+
+message WithdrawCommand {
+  string id = 1;
+  me.jangjunha.ftgo.common.Money amount = 2;
+  optional string description = 3;
+}

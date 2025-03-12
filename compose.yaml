@@ -182,6 +182,25 @@ services:
     ports:
       - 8208:5432
 
+  accounting-db:
+    image: docker.eventstore.com/eventstore/eventstoredb-ee:24.10
+    environment:
+      - EVENTSTORE_CLUSTER_SIZE=1
+      - EVENTSTORE_RUN_PROJECTIONS=All
+      - EVENTSTORE_START_STANDARD_PROJECTIONS=true
+      - EVENTSTORE_NODE_PORT=2113
+      - EVENTSTORE_INSECURE=true
+      - EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP=true
+    ports:
+      - "8204:2113"
+    volumes:
+      - type: volume
+        source: accounting-db-data
+        target: /var/lib/eventstore
+      - type: volume
+        source: accounting-db-logs
+        target: /var/log/eventstore
+
   kafka:
     image: apache/kafka-native:3.9.0
     ports:
@@ -226,3 +245,5 @@ volumes:
   consumer-db-data: {}
   kitchen-db-data: {}
   delivery-db-data: {}
+  accounting-db-data: {}
+  accounting-db-logs: {}

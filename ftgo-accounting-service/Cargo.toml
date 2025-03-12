@@ -1,0 +1,36 @@
+[package]
+name = "ftgo-accounting-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bigdecimal = "0.4.7"
+dotenvy = "0.15"
+eventstore = "4.0.0"
+uuid = { version = "1.15.1", features = ["v4", "fast-rng", "serde"] }
+
+kafka = "0.10"
+
+tonic = "*"
+tonic-health = "0.12.3"
+prost = "0.13"
+tokio = { version = "1.0", features = [
+    "rt-multi-thread",
+    "macros",
+    "sync",
+    "time",
+] }
+
+ftgo-proto = { path = "../ftgo-proto" }
+
+[[bin]]
+name = "rpc"
+path = "src/bin/rpc.rs"
+
+[[bin]]
+name = "consumer"
+path = "src/bin/consumer.rs"
+
+[[bin]]
+name = "producer"
+path = "src/bin/producer.rs"
