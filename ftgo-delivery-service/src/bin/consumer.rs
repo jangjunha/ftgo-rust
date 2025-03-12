@@ -1,21 +1,32 @@
-use std::{env, thread::sleep, time::Duration};
+use std::{
+    env,
+    thread::sleep,
+    time::{Duration, UNIX_EPOCH},
+};
 
-use diesel::{dsl::insert_into, prelude::*, PgConnection};
+use chrono::{DateTime, TimeDelta, Utc};
+use diesel::{dsl::insert_into, prelude::*, update, PgConnection};
 use dotenvy::dotenv;
 use ftgo_delivery_service::{establish_connection, models, schema};
-use ftgo_proto::restaurant_service::{restaurant_event, RestaurantEvent};
+use ftgo_proto::{
+    kitchen_service::{kitchen_event, KitchenEvent},
+    restaurant_service::{restaurant_event, RestaurantEvent},
+};
 use kafka::{
     client::{FetchOffset, GroupOffsetStorage},
     consumer::Consumer,
 };
 use prost::Message;
+use rand::seq::IndexedRandom;
 use uuid::Uuid;
 
 const RESTAURANT_EVENT_CHANNEL: &'static str = "restaurant.event";
+const KITCHEN_EVENT_CHANNEL: &'static str = "kitchen.event";
 const GROUP: &'static str = "delivery-service";
 
 enum AcceptedMessage {
     RestaurantEvent(RestaurantEvent),
+    KitchenEvent(KitchenEvent),
 }
 
 impl AcceptedMessage {
@@ -23,6 +34,9 @@ impl AcceptedMessage {
         match topic {
             RESTAURANT_EVENT_CHANNEL => Some(AcceptedMessage::RestaurantEvent(
                 RestaurantEvent::decode(value).expect("Cannot decode restaurant event"),
+            )),
+            KITCHEN_EVENT_CHANNEL => Some(AcceptedMessage::KitchenEvent(
+                KitchenEvent::decode(value).expect("Cannot decode kitchen event"),
             )),
             _ => None,
         }
@@ -52,6 +66,77 @@ impl AcceptedMessage {
                     restaurant_event::Event::RestaurantMenuRevised(_) => Ok(()),
                 }
             }
+
+            AcceptedMessage::KitchenEvent(kitchen_event) => match kitchen_event.event.unwrap {
+                kitchen_event::Event::TicketAccepted(event) => {
+                    use schema::courier_actions::dsl::*;
+                    use schema::couriers::dsl::*;
+                    use schema::deliveries::dsl::*;
+
+                    let did = event.id.parse::<Uuid>().expect("Invalid delivery id");
+                    let rby = event
+                        .ready_by
+                        .map(|ts| {
+                            let system_time =
+                                UNIX_EPOCH + Duration::new(ts.seconds as u64, ts.nanos as u32);
+                            DateTime::<Utc>::from(system_time)
+                        })
+                        .ok_or(())?;
+
+                    let delivery = deliveries
+                        .select(models::Delivery::as_select())
+                        .find(&did)
+                        .first::<models::Delivery>(conn)
+                        .map_err(|_| ())?;
+
+                    let mut rng = rand::rng();
+                    let candidates = couriers
+                        .select(models::Courier::as_select())
+                        .filter(available.eq(true))
+                        .get_results(conn)
+                        .map_err(|_| ())?;
+
+                    if let Some(courier) = candidates.choose(&mut rng) {
+                        let actions = vec![
+                            models::NewCourierAction {
+                                courier_id: courier.id.clone(),
+                                type_: models::DeliveryActionType::Pickup,
+                                delivery_id: did.clone(),
+                                address: delivery.pickup_address.clone(),
+                                time: rby.clone(),
+                            },
+                            models::NewCourierAction {
+                                courier_id: courier.id.clone(),
+                                type_: models::DeliveryActionType::Dropoff,
+                                delivery_id: did.clone(),
+                                address: delivery.delivery_address.clone(),
+                                time: rby + TimeDelta::minutes(30),
+                            },
+                        ];
+                        insert_into(courier_actions)
+                            .values(&actions)
+                            .execute(conn)
+                            .map_err(|_| ())?;
+
+                        update(deliveries)
+                            .set((
+                                state.eq(models::DeliveryState::Scheduled),
+                                ready_by.eq(rby.clone()),
+                                assigned_courier_id.eq(courier.id.clone()),
+                            ))
+                            .filter(schema::deliveries::id.eq(did))
+                            .execute(conn)
+                            .map_err(|_| ())?;
+                    } else {
+                        // No courier exists
+                        return Err(());
+                    }
+                    Ok(())
+                }
+                kitchen_event::Event::TicketCreated(_) => Ok(()),
+                kitchen_event::Event::TicketPreparingStarted(_) => Ok(()),
+                kitchen_event::Event::TicketPreparingCompleted(_) => Ok(()),
+            },
         }
     }
 }
@@ -63,6 +148,7 @@ fn main() {
     let mut conn = establish_connection();
     let mut consumer = Consumer::from_hosts(vec![kafka_url])
         .with_topic(RESTAURANT_EVENT_CHANNEL.to_string())
+        .with_topic(KITCHEN_EVENT_CHANNEL.to_string())
         .with_group(GROUP.to_string())
         .with_fallback_offset(FetchOffset::Earliest)
         .with_offset_storage(Some(GroupOffsetStorage::Kafka))

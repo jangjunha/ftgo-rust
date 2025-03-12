@@ -118,11 +118,22 @@ pub struct Courier {
     pub available: bool,
 }
 
-#[derive(Queryable, Selectable, Identifiable, Associations, Insertable, Debug, PartialEq)]
+#[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]
 #[diesel(belongs_to(Courier))]
 #[diesel(table_name = courier_actions)]
 pub struct CourierAction {
     pub id: i32,
+    pub courier_id: Uuid,
+    pub type_: DeliveryActionType,
+    pub delivery_id: Uuid,
+    pub address: String,
+    pub time: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug, PartialEq)]
+#[diesel(belongs_to(Courier))]
+#[diesel(table_name = courier_actions)]
+pub struct NewCourierAction {
     pub courier_id: Uuid,
     pub type_: DeliveryActionType,
     pub delivery_id: Uuid,

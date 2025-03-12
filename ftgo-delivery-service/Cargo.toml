@@ -9,6 +9,7 @@ diesel = { version = "2.2.0", features = ["postgres", "uuid", "chrono"] }
 diesel_migrations = "2.2.0"
 dotenvy = "0.15"
 uuid = { version = "1.15.1", features = ["v4", "fast-rng", "serde"] }
+rand = "0.9"
 
 tonic = "*"
 tonic-health = "0.12.3"
