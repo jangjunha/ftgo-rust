@@ -102,6 +102,45 @@ services:
       DATABASE_URL: postgres://postgres@kitchen-db/kitchen
       KAFKA_URL: kafka:9094
 
+  ### Delivery
+  delivery-rpc:
+    image: ftgo-delivery-rpc
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-delivery-service
+        - BINARY=rpc
+    environment:
+      DATABASE_URL: postgres://postgres@delivery-db/delivery
+      KAFKA_URL: kafka:9094
+    ports:
+      - 8108:8108
+    depends_on:
+      - delivery-db
+
+  delivery-producer:
+    image: ftgo-delivery-producer
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-delivery-service
+        - BINARY=producer
+    environment:
+      DATABASE_URL: postgres://postgres@delivery-db/delivery
+      KAFKA_URL: kafka:9094
+
+  delivery-consumer:
+    image: ftgo-delivery-consumer
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-delivery-service
+        - BINARY=consumer
+    environment:
+      DATABASE_URL: postgres://postgres@delivery-db/delivery
+      KAFKA_URL: kafka:9094
+
+  ### Database
   restaurant-db:
     restart: always
     image: postgres:17-alpine
