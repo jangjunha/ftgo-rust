@@ -7,6 +7,7 @@ fn main() {
                 "proto/restaurants.proto",
                 "proto/consumers.proto",
                 "proto/kitchens.proto",
+                "proto/deliveries.proto",
             ],
             &["proto"],
         )
