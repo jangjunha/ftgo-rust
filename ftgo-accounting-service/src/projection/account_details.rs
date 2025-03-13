@@ -1,5 +1,8 @@
 use bigdecimal::{BigDecimal, Zero};
 use diesel::{expression::AsExpression, insert_into, prelude::*, sql_types::Numeric, update};
+use diesel_async::{
+    scoped_futures::ScopedFutureExt, AsyncConnection, AsyncPgConnection, RunQueryDsl,
+};
 use ftgo_proto::accounting_service::{accounting_event, AccountingEvent};
 use uuid::Uuid;
 
@@ -15,11 +18,11 @@ pub struct AccountDetail {
 }
 
 pub struct AccountDetailsProjection<'a> {
-    conn: &'a mut PgConnection,
+    conn: &'a mut AsyncPgConnection,
 }
 
 impl AccountingProjection for AccountDetailsProjection<'_> {
-    fn process(
+    async fn process(
         &mut self,
         event: &AccountingEvent,
         stream_position: i64,
@@ -41,7 +44,8 @@ impl AccountingProjection for AccountDetailsProjection<'_> {
                 };
                 insert_into(account_details::table)
                     .values(&entity)
-                    .execute(self.conn)?;
+                    .execute(self.conn)
+                    .await?;
                 Ok(())
             }
             accounting_event::Event::AccountDeposited(event) => {
@@ -65,20 +69,27 @@ impl AccountingProjection for AccountDetailsProjection<'_> {
                         key: "amount".to_string(),
                     })?;
                 let amount_expr = AsExpression::<Numeric>::as_expression(amount);
-                self.conn.transaction(|conn| {
-                    if Self::was_already_applied(conn, &aid, log_position)? {
-                        return Ok(());
-                    };
-                    update(account_details::table)
-                        .set((
-                            account_details::amount.eq(account_details::amount + amount_expr),
-                            account_details::version.eq(stream_position),
-                            account_details::last_processed_position.eq(log_position),
-                        ))
-                        .filter(account_details::id.eq(aid))
-                        .execute(conn)?;
-                    Ok(())
-                })
+                self.conn
+                    .transaction(|conn| {
+                        async move {
+                            if Self::was_already_applied(conn, &aid, log_position).await? {
+                                return Ok(());
+                            };
+                            update(account_details::table)
+                                .set((
+                                    account_details::amount
+                                        .eq(account_details::amount + amount_expr),
+                                    account_details::version.eq(stream_position),
+                                    account_details::last_processed_position.eq(log_position),
+                                ))
+                                .filter(account_details::id.eq(aid))
+                                .execute(conn)
+                                .await?;
+                            Ok(())
+                        }
+                        .scope_boxed()
+                    })
+                    .await
             }
             accounting_event::Event::AccountWithdrawn(event) => {
                 let aid = event.id.parse::<Uuid>().map_err(|_| {
@@ -101,39 +112,47 @@ impl AccountingProjection for AccountDetailsProjection<'_> {
                         key: "amount".to_string(),
                     })?;
                 let amount_expr = AsExpression::<Numeric>::as_expression(amount);
-                self.conn.transaction(|conn| {
-                    if Self::was_already_applied(conn, &aid, log_position)? {
-                        return Ok(());
-                    };
-                    update(account_details::table)
-                        .set((
-                            account_details::amount.eq(account_details::amount - amount_expr),
-                            account_details::version.eq(stream_position),
-                            account_details::last_processed_position.eq(log_position),
-                        ))
-                        .filter(account_details::id.eq(aid))
-                        .execute(conn)?;
-                    Ok(())
-                })
+                self.conn
+                    .transaction(|conn| {
+                        async move {
+                            if Self::was_already_applied(conn, &aid, log_position).await? {
+                                return Ok(());
+                            };
+                            update(account_details::table)
+                                .set((
+                                    account_details::amount
+                                        .eq(account_details::amount - amount_expr),
+                                    account_details::version.eq(stream_position),
+                                    account_details::last_processed_position.eq(log_position),
+                                ))
+                                .filter(account_details::id.eq(aid))
+                                .execute(conn)
+                                .await?;
+                            Ok(())
+                        }
+                        .scope_boxed()
+                    })
+                    .await
             }
         }
     }
 }
 
 impl<'a> AccountDetailsProjection<'a> {
-    fn was_already_applied(
-        conn: &mut PgConnection,
+    async fn was_already_applied(
+        conn: &mut AsyncPgConnection,
         account_id: &Uuid,
         log_position: i64,
     ) -> Result<bool, diesel::result::Error> {
         let last = account_details::table
             .select(account_details::last_processed_position)
             .filter(account_details::id.eq(account_id))
-            .get_result::<i64>(conn)?;
+            .get_result::<i64>(conn)
+            .await?;
         Ok(last >= log_position)
     }
 
-    pub fn new(conn: &'a mut PgConnection) -> Self {
+    pub fn new(conn: &'a mut AsyncPgConnection) -> Self {
         Self { conn }
     }
 }

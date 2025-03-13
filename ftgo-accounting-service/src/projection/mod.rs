@@ -1,6 +1,6 @@
 use std::env;
 
-use diesel::{Connection, PgConnection};
+use diesel_async::{AsyncConnection, AsyncPgConnection};
 use dotenvy::dotenv;
 use ftgo_proto::accounting_service::AccountingEvent;
 use thiserror::Error;
@@ -15,7 +15,7 @@ pub trait AccountingProjection {
         event: &AccountingEvent,
         stream_position: i64,
         log_position: i64,
-    ) -> Result<(), AccountingProjectionError>;
+    ) -> impl std::future::Future<Output = Result<(), AccountingProjectionError>> + Send;
 }
 
 #[derive(Error, Debug)]
@@ -26,10 +26,11 @@ pub enum AccountingProjectionError {
     Connection(#[from] diesel::result::Error),
 }
 
-pub fn establish_connection() -> PgConnection {
+pub async fn establish_connection() -> AsyncPgConnection {
     dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url)
+    AsyncPgConnection::establish(&database_url)
+        .await
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }

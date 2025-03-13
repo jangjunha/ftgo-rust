@@ -1,24 +1,18 @@
 use bigdecimal::BigDecimal;
-use diesel::{
-    query_dsl::methods::{FindDsl, LimitDsl, OffsetDsl, OrderDsl, SelectDsl},
-    ExpressionMethods, PgConnection, RunQueryDsl, SelectableHelper,
-};
+use diesel::{prelude::*, ExpressionMethods, SelectableHelper};
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use eventstore::ExpectedRevision;
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{
-    models,
-    projection::{self, establish_connection},
-    store::AccountStore,
-};
+use crate::{models, projection, store::AccountStore};
 
-pub struct AccountingService {
+pub struct AccountingService<'a> {
     store: AccountStore,
-    conn: PgConnection,
+    conn: &'a mut AsyncPgConnection,
 }
 
-impl AccountingService {
+impl AccountingService<'_> {
     pub async fn create(
         &self,
         account_id: Option<Uuid>,
@@ -103,7 +97,8 @@ impl AccountingService {
         match account_details::table
             .select(AccountDetail::as_select())
             .find(account_id)
-            .get_result(&mut self.conn)
+            .get_result(self.conn)
+            .await
         {
             Ok(entity) => Ok(Some(entity)),
             Err(diesel::result::Error::NotFound) => Ok(None),
@@ -123,17 +118,15 @@ impl AccountingService {
             .order(account_infos::id.asc())
             .offset(((page - 1) * page_size).into())
             .limit(page_size.into())
-            .get_results(&mut self.conn)
+            .get_results(self.conn)
+            .await
             .map_err(|_| AccountingError::Internal)
     }
 }
 
-impl Default for AccountingService {
-    fn default() -> Self {
-        Self {
-            store: AccountStore::default(),
-            conn: establish_connection(),
-        }
+impl<'a> AccountingService<'a> {
+    pub fn new(store: AccountStore, conn: &'a mut AsyncPgConnection) -> Self {
+        Self { store, conn }
     }
 }
 

@@ -1,3 +1,5 @@
+use diesel_async::{async_connection_wrapper::AsyncConnectionWrapper, AsyncPgConnection};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use eventstore::{Position, StreamPosition, SubscribeToAllOptions, SubscriptionFilter};
 use ftgo_accounting_service::{
     establish_esdb_client,
@@ -12,8 +14,20 @@ use prost::Message;
 
 const SUBSCRIPTION_ID: &'static str = "default";
 
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+
 #[tokio::main]
 async fn main() {
+    let conn = establish_connection().await;
+    let mut async_wrapper: AsyncConnectionWrapper<AsyncPgConnection> =
+        AsyncConnectionWrapper::from(conn);
+    tokio::task::spawn_blocking(move || {
+        async_wrapper.run_pending_migrations(MIGRATIONS).unwrap();
+    })
+    .await
+    .expect("Error while run migration");
+
+    let mut conn = establish_connection().await;
     let client = establish_esdb_client();
     let store = CheckpointStore::default();
 
@@ -44,13 +58,13 @@ async fn main() {
         let event = AccountingEvent::decode(recorded_event.data.clone())
             .expect("Failed to decode accounting event");
 
-        let mut conn = establish_connection();
         AccountDetailsProjection::new(&mut conn)
             .process(
                 &event,
                 recorded_event.revision.try_into().unwrap(),
                 recorded_event.position.commit.try_into().unwrap(),
             )
+            .await
             .expect("Failed to process while AccountDetails projection");
         AccountInfosProjection::new(&mut conn)
             .process(
@@ -58,6 +72,7 @@ async fn main() {
                 recorded_event.revision.try_into().unwrap(),
                 recorded_event.position.commit.try_into().unwrap(),
             )
+            .await
             .expect("Failed to process while AccountInfosProjection projection");
 
         store

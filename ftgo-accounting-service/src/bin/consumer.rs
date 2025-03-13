@@ -1,7 +1,10 @@
 use std::{env, thread::sleep, time::Duration};
 
 use dotenvy::dotenv;
-use ftgo_accounting_service::{service::AccountingService, COMMAND_CHANNEL};
+use ftgo_accounting_service::{
+    projection::establish_connection, service::AccountingService, store::AccountStore,
+    COMMAND_CHANNEL,
+};
 use ftgo_proto::{
     accounting_service::AccountingCommand,
     consumer_service::{consumer_event, ConsumerEvent},
@@ -34,7 +37,7 @@ impl AcceptedMessage {
         }
     }
 
-    async fn process(self, service: &AccountingService) -> Result<(), ()> {
+    async fn process(self, service: &AccountingService<'_>) -> Result<(), ()> {
         match self {
             AcceptedMessage::AccountingCommand(command_event) => {
                 match command_event.command.unwrap() {
@@ -95,7 +98,9 @@ async fn main() {
         .create()
         .unwrap();
 
-    let service = AccountingService::default();
+    let store = AccountStore::default();
+    let conn = &mut establish_connection().await;
+    let service = AccountingService::new(store, conn);
 
     loop {
         let mss = consumer.poll().expect("Cannont poll messages");
