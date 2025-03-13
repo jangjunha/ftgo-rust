@@ -1,11 +1,21 @@
 use bigdecimal::BigDecimal;
+use diesel::{
+    query_dsl::methods::{FindDsl, LimitDsl, OffsetDsl, OrderDsl, SelectDsl},
+    ExpressionMethods, PgConnection, RunQueryDsl, SelectableHelper,
+};
 use eventstore::ExpectedRevision;
+use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{models, store::AccountStore};
+use crate::{
+    models,
+    projection::{self, establish_connection},
+    store::AccountStore,
+};
 
 pub struct AccountingService {
     store: AccountStore,
+    conn: PgConnection,
 }
 
 impl AccountingService {
@@ -84,19 +94,51 @@ impl AccountingService {
         Ok(events.into_iter().fold(account, |acc, (_, e)| acc.apply(e)))
     }
 
-    // TODO: get account
+    pub async fn get_account(
+        &mut self,
+        account_id: &Uuid,
+    ) -> Result<Option<projection::account_details::AccountDetail>, AccountingError> {
+        use projection::account_details::AccountDetail;
+        use projection::schema::account_details;
+        match account_details::table
+            .select(AccountDetail::as_select())
+            .find(account_id)
+            .get_result(&mut self.conn)
+        {
+            Ok(entity) => Ok(Some(entity)),
+            Err(diesel::result::Error::NotFound) => Ok(None),
+            Err(_) => Err(AccountingError::Internal),
+        }
+    }
 
-    // TODO: list account
+    pub async fn list_accounts(
+        &mut self,
+        page: u32,
+        page_size: u32,
+    ) -> Result<Vec<projection::account_infos::AccountInfo>, AccountingError> {
+        use projection::account_infos::AccountInfo;
+        use projection::schema::account_infos;
+        account_infos::table
+            .select(AccountInfo::as_select())
+            .order(account_infos::id.asc())
+            .offset(((page - 1) * page_size).into())
+            .limit(page_size.into())
+            .get_results(&mut self.conn)
+            .map_err(|_| AccountingError::Internal)
+    }
 }
 
 impl Default for AccountingService {
     fn default() -> Self {
         Self {
             store: AccountStore::default(),
+            conn: establish_connection(),
         }
     }
 }
 
+#[derive(Error, Debug)]
 pub enum AccountingError {
+    #[error("Internal error")]
     Internal,
 }
