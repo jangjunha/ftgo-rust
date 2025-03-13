@@ -67,7 +67,7 @@ impl AcceptedMessage {
                 }
             }
 
-            AcceptedMessage::KitchenEvent(kitchen_event) => match kitchen_event.event.unwrap {
+            AcceptedMessage::KitchenEvent(kitchen_event) => match kitchen_event.event.unwrap() {
                 kitchen_event::Event::TicketAccepted(event) => {
                     use schema::courier_actions::dsl::*;
                     use schema::couriers::dsl::*;
