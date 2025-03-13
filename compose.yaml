@@ -200,6 +200,16 @@ services:
       - type: volume
         source: accounting-db-logs
         target: /var/log/eventstore
+  accounting-projection-db:
+    restart: always
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=accounting
+    volumes:
+      - accounting-projection-db-data:/var/lib/postgresql/data
+    ports:
+      - 8304:5432
 
   kafka:
     image: apache/kafka-native:3.9.0
@@ -247,3 +257,4 @@ volumes:
   delivery-db-data: {}
   accounting-db-data: {}
   accounting-db-logs: {}
+  accounting-projection-db-data: {}

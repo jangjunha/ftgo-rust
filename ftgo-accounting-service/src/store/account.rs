@@ -1,12 +1,9 @@
-use std::env;
-
-use dotenvy::dotenv;
 use eventstore::{AppendToStreamOptions, EventData, ExpectedRevision, ReadStreamOptions};
 use ftgo_proto::accounting_service::{accounting_event, AccountingEvent};
 use prost::Message;
 use uuid::Uuid;
 
-use crate::models;
+use crate::{establish_esdb_client, models};
 
 pub struct AccountStore {
     client: eventstore::Client,
@@ -72,15 +69,8 @@ impl AccountStore {
 
 impl Default for AccountStore {
     fn default() -> Self {
-        dotenv().ok();
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
         Self {
-            client: eventstore::Client::new(
-                database_url
-                    .parse()
-                    .expect("Cannot parse esdb database url"),
-            )
-            .expect("Cannot construct esdb client"),
+            client: establish_esdb_client(),
         }
     }
 }
