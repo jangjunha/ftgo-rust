@@ -252,6 +252,18 @@ services:
       /opt/kafka/bin/kafka-topics.sh --create --topic "consumer.event" \\
         --bootstrap-server kafka:9094 --if-not-exists;
 
+      /opt/kafka/bin/kafka-topics.sh --create --topic "consumer.command" \\
+        --bootstrap-server kafka:9094 --if-not-exists;
+
+      /opt/kafka/bin/kafka-topics.sh --create --topic "delivery.event" \\
+        --bootstrap-server kafka:9094 --if-not-exists;
+
+      /opt/kafka/bin/kafka-topics.sh --create --topic "kitchen.event" \\
+        --bootstrap-server kafka:9094 --if-not-exists;
+
+      /opt/kafka/bin/kafka-topics.sh --create --topic "kitchen.command" \\
+        --bootstrap-server kafka:9094 --if-not-exists;
+
       /opt/kafka/bin/kafka-topics.sh --create --topic "accounting.event" \\
         --bootstrap-server kafka:9094 --if-not-exists;
 
