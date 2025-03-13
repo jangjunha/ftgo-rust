@@ -1,4 +1,4 @@
-use std::{env, thread::sleep, time::Duration};
+use std::{collections::HashMap, env, thread::sleep, time::Duration};
 
 use diesel::{
     delete,
@@ -52,7 +52,7 @@ impl AcceptedMessage {
     fn reply(
         conn: &mut PgConnection,
         channel: &Option<String>,
-        correlation_id: &str,
+        state: &HashMap<String, String>,
         succeed: bool,
         body: Option<Vec<u8>>,
     ) -> Result<(), diesel::result::Error> {
@@ -60,7 +60,7 @@ impl AcceptedMessage {
             use schema::outbox::dsl::*;
 
             let container = CommandReply {
-                correlation_id: correlation_id.to_owned(),
+                state: state.clone(),
                 succeed: succeed,
                 body: body,
             };
@@ -104,7 +104,7 @@ impl AcceptedMessage {
                                     Self::reply(
                                         conn,
                                         &kitchen_command.reply_channel,
-                                        &kitchen_command.correlation_id,
+                                        &kitchen_command.state,
                                         false,
                                         None,
                                     )?;
@@ -139,7 +139,7 @@ impl AcceptedMessage {
                                 Self::reply(
                                     conn,
                                     &kitchen_command.reply_channel,
-                                    &kitchen_command.correlation_id,
+                                    &kitchen_command.state,
                                     true,
                                     Some({
                                         let reply = CreateTicketCommandReply {
@@ -203,7 +203,7 @@ impl AcceptedMessage {
                                         Self::reply(
                                             conn,
                                             &kitchen_command.reply_channel,
-                                            &kitchen_command.correlation_id,
+                                            &kitchen_command.state,
                                             succeed,
                                             None,
                                         )?;
@@ -214,7 +214,7 @@ impl AcceptedMessage {
                                         Self::reply(
                                             conn,
                                             &kitchen_command.reply_channel,
-                                            &kitchen_command.correlation_id,
+                                            &kitchen_command.state,
                                             false,
                                             None,
                                         )?;
@@ -257,7 +257,7 @@ impl AcceptedMessage {
                                         Self::reply(
                                             conn,
                                             &kitchen_command.reply_channel,
-                                            &kitchen_command.correlation_id,
+                                            &kitchen_command.state,
                                             succeed,
                                             None,
                                         )?;
@@ -267,7 +267,7 @@ impl AcceptedMessage {
                                         Self::reply(
                                             conn,
                                             &kitchen_command.reply_channel,
-                                            &kitchen_command.correlation_id,
+                                            &kitchen_command.state,
                                             false,
                                             None,
                                         )?;

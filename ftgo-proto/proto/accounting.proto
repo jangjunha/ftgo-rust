@@ -78,7 +78,7 @@ message AccountWithdrawn {
 /// Commands
 
 message AccountingCommand {
-  string correlationId = 1;
+  map<string, string> state = 1;
   optional string replyChannel = 2;
   oneof command {
     DepositCommand deposit = 3;

@@ -3,7 +3,7 @@ syntax = "proto3";
 package me.jangjunha.ftgo.common;
 
 message CommandReply {
-    string correlationId = 1;
+    map<string, string> state = 1;
     bool succeed = 2;
     optional bytes body = 3;
 }

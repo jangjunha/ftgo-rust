@@ -1,4 +1,4 @@
-use std::{env, thread::sleep, time::Duration};
+use std::{collections::HashMap, env, thread::sleep, time::Duration};
 
 use diesel::{dsl::insert_into, prelude::*, result::Error::NotFound, Connection, PgConnection};
 use dotenvy::dotenv;
@@ -34,7 +34,7 @@ impl AcceptedMessage {
     fn reply(
         conn: &mut PgConnection,
         channel: &Option<String>,
-        correlation_id: &str,
+        state: &HashMap<String, String>,
         succeed: bool,
         body: Option<Vec<u8>>,
     ) -> Result<(), diesel::result::Error> {
@@ -42,7 +42,7 @@ impl AcceptedMessage {
             use schema::outbox::dsl::*;
 
             let container = CommandReply {
-                correlation_id: correlation_id.to_owned(),
+                state: state.clone(),
                 succeed: succeed,
                 body: body,
             };
@@ -84,7 +84,7 @@ impl AcceptedMessage {
                                         Self::reply(
                                             conn,
                                             &consumer_command.reply_channel,
-                                            &consumer_command.correlation_id,
+                                            &consumer_command.state,
                                             true,
                                             None,
                                         )?;
@@ -94,7 +94,7 @@ impl AcceptedMessage {
                                         Self::reply(
                                             conn,
                                             &consumer_command.reply_channel,
-                                            &consumer_command.correlation_id,
+                                            &consumer_command.state,
                                             false,
                                             None,
                                         )?;
