@@ -2,7 +2,7 @@
 resolver = "2"
 members = [ "ftgo-accounting-service",
     "ftgo-consumer-service", "ftgo-delivery-service",
-    "ftgo-kitchen-service",
+    "ftgo-kitchen-service", "ftgo-order-service",
     "ftgo-proto",
     "ftgo-restaurant-service",
 ]

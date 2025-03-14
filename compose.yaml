@@ -161,6 +161,16 @@ services:
       - consumer-db-data:/var/lib/postgresql/data
     ports:
       - 8202:5432
+  order-db:
+    restart: always
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=order
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+    ports:
+      - 8203:5432
   kitchen-db:
     restart: always
     image: postgres:17-alpine
@@ -275,6 +285,7 @@ volumes:
   restaurant-db-data: {}
   consumer-db-data: {}
   kitchen-db-data: {}
+  order-db-data: {}
   delivery-db-data: {}
   accounting-db-data: {}
   accounting-db-logs: {}
