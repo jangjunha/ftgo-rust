@@ -3,14 +3,14 @@ use std::{collections::HashMap, env, thread::sleep, time::Duration};
 use diesel::{delete, insert_into, prelude::*, Connection, ExpressionMethods, PgConnection};
 use dotenvy::dotenv;
 use ftgo_order_service::{
+    command_handlers::handle_command,
     establish_connection,
-    // events::OrderEventPublisher,
     models::{self, NewOutbox},
-    schema,
-    // COMMAND_CHANNEL,
+    schema, COMMAND_CHANNEL,
 };
 use ftgo_proto::{
     common::CommandReply,
+    order_service::OrderCommand,
     restaurant_service::{restaurant_event, RestaurantEvent},
 };
 use kafka::{
@@ -25,16 +25,16 @@ const GROUP: &'static str = "order-service";
 const RESTAURANT_EVENT_CHANNEL: &'static str = "restaurant.event";
 
 enum AcceptedMessage {
-    // OrderCommand(OrderCommand),
+    OrderCommand(OrderCommand),
     RestaurantEvent(RestaurantEvent),
 }
 
 impl AcceptedMessage {
     fn from(topic: &str, value: &[u8]) -> Option<Self> {
         match topic {
-            // COMMAND_CHANNEL => Some(AcceptedMessage::OrderCommand(
-            //     OrderCommand::decode(value).expect("Cannot decode order command"),
-            // )),
+            COMMAND_CHANNEL => Some(AcceptedMessage::OrderCommand(
+                OrderCommand::decode(value).expect("Cannot decode order command"),
+            )),
             RESTAURANT_EVENT_CHANNEL => Some(AcceptedMessage::RestaurantEvent(
                 RestaurantEvent::decode(value).expect("Cannot decode restaurant event"),
             )),
@@ -74,6 +74,25 @@ impl AcceptedMessage {
 
     fn process(self, conn: &mut PgConnection) -> Result<(), ()> {
         match self {
+            AcceptedMessage::OrderCommand(order_command) => conn
+                .transaction(|conn| match handle_command(order_command.clone(), conn) {
+                    Ok(()) => Self::reply(
+                        conn,
+                        &order_command.reply_channel,
+                        &order_command.state,
+                        true,
+                        None,
+                    ),
+                    Err(_) => Self::reply(
+                        conn,
+                        &order_command.reply_channel,
+                        &order_command.state,
+                        false,
+                        None,
+                    ),
+                })
+                .map_err(|_| ()),
+
             AcceptedMessage::RestaurantEvent(restaurant_event) => {
                 match restaurant_event.event.unwrap() {
                     restaurant_event::Event::RestaurantCreated(event) => {
@@ -155,7 +174,7 @@ fn main() {
 
     let mut conn = establish_connection();
     let mut consumer = Consumer::from_hosts(vec![kafka_url])
-        // .with_topic(COMMAND_CHANNEL.to_string())
+        .with_topic(COMMAND_CHANNEL.to_string())
         .with_topic(RESTAURANT_EVENT_CHANNEL.to_string())
         .with_group(GROUP.to_string())
         .with_fallback_offset(FetchOffset::Earliest)

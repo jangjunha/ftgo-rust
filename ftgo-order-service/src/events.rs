@@ -15,7 +15,7 @@ impl<'a> OrderEventPublisher<'a> {
         Self { conn }
     }
 
-    pub fn order_authorized(&mut self, order: &models::Order) {
+    pub fn order_authorized(&mut self, order: &models::Order) -> Result<(), diesel::result::Error> {
         let event = OrderEvent {
             event: Some(order_event::Event::OrderAuthorized(OrderAuthorizedEvent {
                 id: order.id.to_string(),
@@ -24,16 +24,17 @@ impl<'a> OrderEventPublisher<'a> {
         let mut buf = Vec::new();
         event.encode(&mut buf).unwrap();
 
-        let _ = diesel::insert_into(schema::outbox::table)
+        diesel::insert_into(schema::outbox::table)
             .values(NewOutbox {
                 topic: EVENT_CHANNEL.to_string(),
                 key: order.id.to_string(),
                 value: buf,
             })
-            .execute(self.conn);
+            .execute(self.conn)
+            .map(|_| ())
     }
 
-    pub fn order_rejected(&mut self, order: &models::Order) {
+    pub fn order_rejected(&mut self, order: &models::Order) -> Result<(), diesel::result::Error> {
         let event = OrderEvent {
             event: Some(order_event::Event::OrderRejected(OrderRejectedEvent {
                 id: order.id.to_string(),
@@ -42,12 +43,13 @@ impl<'a> OrderEventPublisher<'a> {
         let mut buf = Vec::new();
         event.encode(&mut buf).unwrap();
 
-        let _ = diesel::insert_into(schema::outbox::table)
+        diesel::insert_into(schema::outbox::table)
             .values(NewOutbox {
                 topic: EVENT_CHANNEL.to_string(),
                 key: order.id.to_string(),
                 value: buf,
             })
-            .execute(self.conn);
+            .execute(self.conn)
+            .map(|_| ())
     }
 }
