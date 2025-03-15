@@ -64,3 +64,74 @@ message DeliveryInformation {
 message PaymentInformation {
   string paymentToken = 1;
 }
+
+
+/// Events
+
+message OrderEvent {
+  oneof event {
+    OrderCreatedEvent orderCreated = 1;
+    OrderAuthorizedEvent orderAuthorized = 2;
+    OrderRejectedEvent orderRejected = 3;
+    OrderRevisionProposedEvent orderRevisionProposed = 4;
+  };
+}
+
+message OrderDetails {
+  repeated OrderLineItem lineItems = 1;
+  me.jangjunha.ftgo.common.Money orderTotal = 2;
+  string restaurant_id = 3;
+  string consumer_id = 4;
+}
+
+message OrderCreatedEvent {
+  string id = 1;
+  OrderDetails order_details = 2;
+  string delivery_address = 3;
+  string restaurant_name = 4;
+}
+
+message OrderAuthorizedEvent {
+  string id = 1;
+}
+
+message OrderRejectedEvent {
+  string id = 1;
+}
+
+message OrderRevision {
+  string id = 1;
+  DeliveryInformation deliveryInformation = 2;
+  RevisedOrderLineItem revisedOrderLineItems = 3;
+}
+
+message RevisedOrderLineItem {
+  int32 quantity = 1;
+  string menu_item_id = 2;
+}
+
+message OrderRevisionProposedEvent {
+  OrderRevision order_revision = 1;
+  me.jangjunha.ftgo.common.Money current_order_total = 2;
+  me.jangjunha.ftgo.common.Money new_order_total = 3;
+}
+
+
+/// Commands
+
+message OrderCommand {
+  map<string, string> state = 1;
+  optional string replyChannel = 2;
+  oneof command {
+    ApproveOrderCommand approve = 3;
+    RejectOrderCommand reject = 4;
+  };
+}
+
+message ApproveOrderCommand {
+  string id = 1;
+}
+
+message RejectOrderCommand {
+  string id = 1;
+}
