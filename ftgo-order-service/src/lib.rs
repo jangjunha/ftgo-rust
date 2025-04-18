@@ -7,6 +7,7 @@ pub mod command_handlers;
 pub mod events;
 pub mod models;
 pub mod schema;
+pub mod serializer;
 
 pub const EVENT_CHANNEL: &str = "order.event";
 pub const COMMAND_CHANNEL: &str = "order.command";
