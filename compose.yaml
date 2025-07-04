@@ -225,6 +225,19 @@ services:
       - accounting-db
       - accounting-projection-db
 
+  accounting-producer:
+    image: ftgo-accounting-producer
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-accounting-service
+        - BINARY=producer
+    environment:
+      ESDB_URL: esdb://accounting-db:2113?tls=false
+      KAFKA_URL: kafka:9094
+    depends_on:
+      - accounting-db
+
   ### Database
   restaurant-db:
     restart: always
