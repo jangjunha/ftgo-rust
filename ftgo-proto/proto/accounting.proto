@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package me.jangjunha.ftgo.accounting_service;
 
+import "command.proto";
 import "money.proto";
 
 service AccountingService {
@@ -55,6 +56,7 @@ message AccountingEvent {
     AccountOpened accountOpened = 1;
     AccountDeposited accountDeposited = 2;
     AccountWithdrawn accountWithdrawn = 3;
+    _CommandReplyRequested commandReplyRequested = 4;
   };
 }
 
@@ -72,6 +74,11 @@ message AccountWithdrawn {
   string id = 1;
   me.jangjunha.ftgo.common.Money amount = 2;
   optional string description = 3;
+}
+
+message _CommandReplyRequested {  // Internal event - will not published outside
+  me.jangjunha.ftgo.common.CommandReply reply = 1;
+  string reply_channel = 2;
 }
 
 

@@ -28,6 +28,9 @@ impl AccountStore {
                             accounting_event::Event::AccountOpened(_) => "AccountOpened",
                             accounting_event::Event::AccountDeposited(_) => "AccountDeposited",
                             accounting_event::Event::AccountWithdrawn(_) => "AccountWithdrawn",
+                            accounting_event::Event::CommandReplyRequested(_) => {
+                                "CommandReplyRequested"
+                            }
                         };
                         let event = EventData::binary(
                             event_type,

@@ -68,7 +68,7 @@ impl AccountingServiceBase for AccountingServiceImpl {
         let service = AccountingService::new(store, conn);
 
         let account = service
-            .deposit(account_id, amount, None, None)
+            .deposit(account_id, amount, None, None, None)
             .await
             .map_err(|_| Status::internal("Internal error"))?;
 
@@ -99,7 +99,7 @@ impl AccountingServiceBase for AccountingServiceImpl {
         let service = AccountingService::new(store, conn);
 
         let account = service
-            .withdraw(account_id, amount, None, None)
+            .withdraw(account_id, amount, None, None, None)
             .await
             .map_err(|_| Status::internal("Internal error"))?;
 

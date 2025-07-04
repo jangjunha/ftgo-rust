@@ -4,6 +4,7 @@ use std::time::Duration;
 use dotenvy::dotenv;
 use eventstore::{Client, Position, StreamPosition, SubscribeToAllOptions, SubscriptionFilter};
 use ftgo_proto::accounting_service::{accounting_event, AccountingEvent};
+use ftgo_proto::common::CommandReply;
 use kafka::client::RequiredAcks;
 use kafka::producer::{Producer, Record};
 use prost::Message;
@@ -71,7 +72,15 @@ impl EventStoreProducer {
                 if let Some(accounting_event) =
                     self.try_decode_accounting_event(&recorded_event.data)
                 {
-                    self.publish_accounting_event(&accounting_event, &recorded_event.stream_id)?;
+                    // Handle command reply events separately
+                    if let Some(accounting_event::Event::CommandReplyRequested(reply_request)) = &accounting_event.event {
+                        if let Some(reply) = &reply_request.reply {
+                            self.publish_command_reply(reply, &reply_request.reply_channel)?;
+                        }
+                    } else {
+                        // Publish regular accounting events
+                        self.publish_accounting_event(&accounting_event, &recorded_event.stream_id)?;
+                    }
                     processed_any = true;
                     latest_position = Some(recorded_event.position.commit);
                 }
@@ -97,6 +106,18 @@ impl EventStoreProducer {
         event: &AccountingEvent,
         stream_id: &str,
     ) -> Result<(), kafka::Error> {
+        // Log the event type for debugging
+        let event_type = match &event.event {
+            Some(accounting_event::Event::AccountOpened(_)) => "AccountOpened",
+            Some(accounting_event::Event::AccountDeposited(_)) => "AccountDeposited",
+            Some(accounting_event::Event::AccountWithdrawn(_)) => "AccountWithdrawn",
+            // Skip internal event
+            Some(accounting_event::Event::CommandReplyRequested(_)) => {
+                return Ok(());
+            }
+            None => "Unknown",
+        };
+
         // Extract account ID from stream name (Account-{uuid})
         let account_id = stream_id.strip_prefix("Account-").unwrap_or(stream_id);
 
@@ -110,15 +131,27 @@ impl EventStoreProducer {
         // Send to Kafka
         self.kafka.send(&record)?;
 
-        // Log the event type for debugging
-        let event_type = match &event.event {
-            Some(accounting_event::Event::AccountOpened(_)) => "AccountOpened",
-            Some(accounting_event::Event::AccountDeposited(_)) => "AccountDeposited",
-            Some(accounting_event::Event::AccountWithdrawn(_)) => "AccountWithdrawn",
-            None => "Unknown",
-        };
-
         println!("Published {} event for account {}", event_type, account_id);
+
+        Ok(())
+    }
+
+    fn publish_command_reply(
+        &mut self,
+        reply: &CommandReply,
+        reply_channel: &str,
+    ) -> Result<(), kafka::Error> {
+        // Serialize the command reply
+        let mut buf = Vec::new();
+        reply.encode(&mut buf).unwrap();
+
+        // Create Kafka record - use a dummy key since replies don't need specific partitioning
+        let record = Record::from_key_value(reply_channel, "reply".to_string(), buf);
+
+        // Send to the specified reply channel
+        self.kafka.send(&record)?;
+
+        println!("Published command reply to channel {}", reply_channel);
 
         Ok(())
     }

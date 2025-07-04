@@ -1,7 +1,13 @@
+use std::collections::HashMap;
+
 use bigdecimal::BigDecimal;
 use diesel::{prelude::*, ExpressionMethods, SelectableHelper};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use eventstore::ExpectedRevision;
+use ftgo_proto::{
+    accounting_service::{accounting_event, AccountingEvent, CommandReplyRequested},
+    common::CommandReply,
+};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -40,6 +46,7 @@ impl AccountingService<'_> {
         amount: BigDecimal,
         description: Option<String>,
         event_id: Option<Uuid>,
+        command_metadata: Option<(&str, &HashMap<String, String>)>,
     ) -> Result<models::Account, AccountingError> {
         let account = self
             .store
@@ -47,10 +54,49 @@ impl AccountingService<'_> {
             .await
             .map_err(|_| AccountingError::Internal)?;
 
-        // TODO: process saga reply event
         let events = match account.deposit(amount, description) {
-            Ok(event) => vec![(event_id, event)],
-            Err(_) => vec![],
+            Ok(event) => {
+                let mut events = vec![(event_id, event)];
+                if let Some((reply_channel, state)) = command_metadata {
+                    events.push((
+                        None,
+                        AccountingEvent {
+                            event: Some(accounting_event::Event::CommandReplyRequested(
+                                CommandReplyRequested {
+                                    reply: Some(CommandReply {
+                                        state: state.clone(),
+                                        succeed: true,
+                                        body: None,
+                                    }),
+                                    reply_channel: reply_channel.to_string(),
+                                },
+                            )),
+                        },
+                    ));
+                }
+                events
+            }
+            Err(_) => {
+                if let Some((reply_channel, state)) = command_metadata {
+                    vec![(
+                        None,
+                        AccountingEvent {
+                            event: Some(accounting_event::Event::CommandReplyRequested(
+                                CommandReplyRequested {
+                                    reply: Some(CommandReply {
+                                        state: state.clone(),
+                                        succeed: false,
+                                        body: None,
+                                    }),
+                                    reply_channel: reply_channel.to_string(),
+                                },
+                            )),
+                        },
+                    )]
+                } else {
+                    vec![]
+                }
+            }
         };
 
         let _ = self
@@ -67,6 +113,7 @@ impl AccountingService<'_> {
         amount: BigDecimal,
         description: Option<String>,
         event_id: Option<Uuid>,
+        command_metadata: Option<(&str, &HashMap<String, String>)>,
     ) -> Result<models::Account, AccountingError> {
         let account = self
             .store
@@ -74,10 +121,49 @@ impl AccountingService<'_> {
             .await
             .map_err(|_| AccountingError::Internal)?;
 
-        // TODO: process saga reply event
         let events = match account.withdraw(amount, description) {
-            Ok(event) => vec![(event_id, event)],
-            Err(_) => vec![],
+            Ok(event) => {
+                let mut events = vec![(event_id, event)];
+                if let Some((reply_channel, state)) = command_metadata {
+                    events.push((
+                        None,
+                        AccountingEvent {
+                            event: Some(accounting_event::Event::CommandReplyRequested(
+                                CommandReplyRequested {
+                                    reply: Some(CommandReply {
+                                        state: state.clone(),
+                                        succeed: true,
+                                        body: None,
+                                    }),
+                                    reply_channel: reply_channel.to_string(),
+                                },
+                            )),
+                        },
+                    ));
+                }
+                events
+            }
+            Err(_) => {
+                if let Some((reply_channel, state)) = command_metadata {
+                    vec![(
+                        None,
+                        AccountingEvent {
+                            event: Some(accounting_event::Event::CommandReplyRequested(
+                                CommandReplyRequested {
+                                    reply: Some(CommandReply {
+                                        state: state.clone(),
+                                        succeed: false,
+                                        body: None,
+                                    }),
+                                    reply_channel: reply_channel.to_string(),
+                                },
+                            )),
+                        },
+                    )]
+                } else {
+                    vec![]
+                }
+            }
         };
 
         let _ = self

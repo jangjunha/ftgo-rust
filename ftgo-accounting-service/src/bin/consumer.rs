@@ -40,6 +40,10 @@ impl AcceptedMessage {
     async fn process(self, service: &AccountingService<'_>) -> Result<(), ()> {
         match self {
             AcceptedMessage::AccountingCommand(command_event) => {
+                let command_metadata = command_event
+                    .reply_channel
+                    .as_deref()
+                    .map(|channel| (channel, &command_event.state));
                 match command_event.command.unwrap() {
                     ftgo_proto::accounting_service::accounting_command::Command::Deposit(
                         command,
@@ -51,6 +55,7 @@ impl AcceptedMessage {
                                 command.amount.ok_or(())?.amount.parse().map_err(|_| ())?,
                                 command.description,
                                 None,
+                                command_metadata,
                             )
                             .await
                             .map_err(|_| ())?;
@@ -66,6 +71,7 @@ impl AcceptedMessage {
                                 command.amount.ok_or(())?.amount.parse().map_err(|_| ())?,
                                 command.description,
                                 None,
+                                command_metadata,
                             )
                             .await
                             .map_err(|_| ())?;

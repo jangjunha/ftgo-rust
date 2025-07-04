@@ -9,6 +9,7 @@ use ftgo_proto::{
 };
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct Account {
     pub id: Uuid,
     pub balance: BigDecimal,
@@ -100,6 +101,7 @@ impl Account {
                         .parse::<BigDecimal>()
                         .expect("Invalid amount"),
             },
+            accounting_event::Event::CommandReplyRequested(_) => self.to_owned(),
         }
     }
 }

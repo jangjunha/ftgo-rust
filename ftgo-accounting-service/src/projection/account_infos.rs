@@ -140,6 +140,7 @@ impl AccountingProjection for AccountInfosProjection<'_> {
                     })
                     .await
             }
+            accounting_event::Event::CommandReplyRequested(_) => Ok(()),
         }
     }
 }
