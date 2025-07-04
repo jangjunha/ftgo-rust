@@ -64,6 +64,44 @@ services:
       DATABASE_URL: postgres://postgres@consumer-db/consumer
       KAFKA_URL: kafka:9094
 
+  ### Order
+  order-rpc:
+    image: ftgo-order-rpc
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-order-service
+        - BINARY=rpc
+    environment:
+      DATABASE_URL: postgres://postgres@order-db/order
+      KAFKA_URL: kafka:9094
+    ports:
+      - 8103:8103
+    depends_on:
+      - order-db
+
+  order-producer:
+    image: ftgo-order-producer
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-order-service
+        - BINARY=producer
+    environment:
+      DATABASE_URL: postgres://postgres@order-db/order
+      KAFKA_URL: kafka:9094
+
+  order-consumer:
+    image: ftgo-order-consumer
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-order-service
+        - BINARY=consumer
+    environment:
+      DATABASE_URL: postgres://postgres@order-db/order
+      KAFKA_URL: kafka:9094
+
   ### Kitchen
   kitchen-rpc:
     image: ftgo-kitchen-rpc
@@ -139,6 +177,53 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@delivery-db/delivery
       KAFKA_URL: kafka:9094
+
+  ### Accounting
+  accounting-rpc:
+    image: ftgo-accounting-rpc
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-accounting-service
+        - BINARY=rpc
+    environment:
+      EVENTSTORE_URL: esdb://accounting-db:2113?tls=false
+      PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
+      KAFKA_URL: kafka:9094
+    ports:
+      - 8104:8104
+    depends_on:
+      - accounting-db
+      - accounting-projection-db
+
+  accounting-consumer:
+    image: ftgo-accounting-consumer
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-accounting-service
+        - BINARY=consumer
+    environment:
+      EVENTSTORE_URL: esdb://accounting-db:2113?tls=false
+      PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
+      KAFKA_URL: kafka:9094
+    depends_on:
+      - accounting-db
+      - accounting-projection-db
+
+  accounting-projector:
+    image: ftgo-accounting-projector
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-accounting-service
+        - BINARY=projector
+    environment:
+      EVENTSTORE_URL: esdb://accounting-db:2113?tls=false
+      PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
+    depends_on:
+      - accounting-db
+      - accounting-projection-db
 
   ### Database
   restaurant-db:
@@ -278,6 +363,12 @@ services:
         --bootstrap-server kafka:9094 --if-not-exists;
 
       /opt/kafka/bin/kafka-topics.sh --create --topic "accounting.command" \\
+        --bootstrap-server kafka:9094 --if-not-exists;
+
+      /opt/kafka/bin/kafka-topics.sh --create --topic "order.event" \\
+        --bootstrap-server kafka:9094 --if-not-exists;
+
+      /opt/kafka/bin/kafka-topics.sh --create --topic "order.command" \\
         --bootstrap-server kafka:9094 --if-not-exists;
       "
 
