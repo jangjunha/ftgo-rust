@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     conn.run_pending_migrations(MIGRATIONS)
         .expect("Failed to run migrations");
 
-    let addr = "[::1]:8102".parse().unwrap();
+    let addr = "0.0.0.0:8102".parse().unwrap();
     let consumer_service = ConsumerServiceImpl::default();
 
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
