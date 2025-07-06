@@ -36,7 +36,7 @@ impl CheckpointStore {
             .append_to_stream(
                 stream_id.clone(),
                 &AppendToStreamOptions::default().expected_revision(ExpectedRevision::StreamExists),
-                EventData::json("checkpoint-stored", &event).unwrap(),
+                EventData::json("CheckpointStored", &event).unwrap(),
             )
             .await
         {
