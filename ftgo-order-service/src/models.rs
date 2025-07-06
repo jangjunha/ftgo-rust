@@ -9,9 +9,13 @@ use diesel::{
     prelude::*,
     serialize::{self, IsNull, Output, ToSql},
 };
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use uuid::Uuid;
 
-use crate::schema::{order_line_items, orders, outbox, restaurant_menu_items, restaurants};
+use crate::schema::{
+    order_line_items, orders, outbox, restaurant_menu_items, restaurants, saga_instances,
+};
 
 #[derive(FromSqlRow, AsExpression, PartialEq, Copy, Clone, Debug)]
 #[diesel(sql_type = crate::schema::sql_types::OrderState)]
@@ -135,4 +139,17 @@ pub struct NewOutbox {
     pub topic: String,
     pub key: String,
     pub value: Vec<u8>,
+}
+
+#[derive(Queryable, Selectable, Identifiable, Insertable, AsChangeset, Debug, PartialEq)]
+#[diesel(table_name = saga_instances, primary_key(saga_type, saga_id))]
+pub struct SagaInstance {
+    pub saga_type: String,
+    pub saga_id: String,
+    pub currently_executing: i32,
+    pub last_request_id: Option<String>,
+    pub end_state: bool,
+    pub compensating: bool,
+    pub failed: bool,
+    pub saga_data_json: Value,
 }

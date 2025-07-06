@@ -59,6 +59,19 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    saga_instances (saga_type, saga_id) {
+        saga_type -> Text,
+        saga_id -> Text,
+        currently_executing -> Int4,
+        last_request_id -> Nullable<Text>,
+        end_state -> Bool,
+        compensating -> Bool,
+        failed -> Bool,
+        saga_data_json -> Jsonb,
+    }
+}
+
 diesel::joinable!(order_line_items -> orders (order_id));
 diesel::joinable!(orders -> restaurants (restaurant_id));
 diesel::joinable!(restaurant_menu_items -> restaurants (restaurant_id));
@@ -69,4 +82,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     outbox,
     restaurant_menu_items,
     restaurants,
+    saga_instances,
 );

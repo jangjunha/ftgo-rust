@@ -6,6 +6,7 @@ use dotenvy::dotenv;
 pub mod command_handlers;
 pub mod events;
 pub mod models;
+pub mod saga;
 pub mod schema;
 pub mod serializer;
 
