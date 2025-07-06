@@ -13,4 +13,4 @@ RUN apt-get update && apt-get install -y \
     libpq5
 ARG BINARY
 COPY --from=builder /app/target/release/${BINARY} /usr/local/bin/app
-CMD app
+CMD ["app"]
