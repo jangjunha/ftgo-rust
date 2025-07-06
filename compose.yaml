@@ -25,6 +25,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@restaurant-db/restaurant
       KAFKA_URL: kafka:9094
+    depends_on:
+      - restaurant-db
 
   ### Consumer
   consumer-rpc:
@@ -52,6 +54,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@consumer-db/consumer
       KAFKA_URL: kafka:9094
+    depends_on:
+      - consumer-db
 
   consumer-consumer:
     image: ftgo-consumer-consumer
@@ -63,6 +67,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@consumer-db/consumer
       KAFKA_URL: kafka:9094
+    depends_on:
+      - consumer-db
 
   ### Order
   order-rpc:
@@ -90,6 +96,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@order-db/order
       KAFKA_URL: kafka:9094
+    depends_on:
+      - order-db
 
   order-consumer:
     image: ftgo-order-consumer
@@ -101,6 +109,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@order-db/order
       KAFKA_URL: kafka:9094
+    depends_on:
+      - order-db
 
   ### Kitchen
   kitchen-rpc:
@@ -128,6 +138,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@kitchen-db/kitchen
       KAFKA_URL: kafka:9094
+    depends_on:
+      - kitchen-db
 
   kitchen-consumer:
     image: ftgo-kitchen-consumer
@@ -139,6 +151,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@kitchen-db/kitchen
       KAFKA_URL: kafka:9094
+    depends_on:
+      - kitchen-db
 
   ### Delivery
   delivery-rpc:
@@ -166,6 +180,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@delivery-db/delivery
       KAFKA_URL: kafka:9094
+    depends_on:
+      - delivery-db
 
   delivery-consumer:
     image: ftgo-delivery-consumer
@@ -177,6 +193,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres@delivery-db/delivery
       KAFKA_URL: kafka:9094
+    depends_on:
+      - delivery-db
 
   ### Accounting
   accounting-rpc:
