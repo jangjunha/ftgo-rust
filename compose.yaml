@@ -405,6 +405,9 @@ services:
 
       /opt/kafka/bin/kafka-topics.sh --create --topic "order.command" \\
         --bootstrap-server kafka:9094 --if-not-exists;
+
+      /opt/kafka/bin/kafka-topics.sh --create --topic "order.reply" \\
+        --bootstrap-server kafka:9094 --if-not-exists;
       "
 
 volumes:

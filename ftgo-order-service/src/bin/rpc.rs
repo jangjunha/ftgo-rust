@@ -1,15 +1,15 @@
 use bigdecimal::BigDecimal;
 use chrono::{Duration, Utc};
-use diesel::{insert_into, prelude::*, update};
+use diesel::{insert_into, prelude::*};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use ftgo_order_service::events::OrderEventPublisher;
-use ftgo_order_service::serializer::serialize_order_details;
+use ftgo_order_service::saga::create_order::{CreateOrderSaga, CreateOrderSagaState};
+use ftgo_order_service::saga::SagaManager;
 use ftgo_proto::common::Money;
 use ftgo_proto::order_service::{
-    CreateOrderPayload, DeliveryInformation, GetOrderPayload, Order, OrderDetails, OrderLineItem,
-    OrderState, PaymentInformation,
+    CreateOrderPayload, DeliveryInformation, GetOrderPayload, Order, OrderLineItem, OrderState,
+    PaymentInformation,
 };
-use prost::Message;
 use prost_types::Timestamp;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
@@ -61,6 +61,7 @@ impl OrderService for OrderServiceImpl {
         &self,
         request: Request<CreateOrderPayload>,
     ) -> Result<Response<Order>, Status> {
+        println!("=== CREATE ORDER REQUEST RECEIVED ===");
         let payload = request.into_inner();
         let rid: Uuid = payload
             .restaurant_id
@@ -115,7 +116,9 @@ impl OrderService for OrderServiceImpl {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        println!("Starting transaction");
         conn.transaction(|conn| {
+            println!("Inserting order into database");
             insert_into(schema::orders::table)
                 .values(&order)
                 .execute(conn)?;
@@ -123,24 +126,23 @@ impl OrderService for OrderServiceImpl {
                 .values(&line_items)
                 .execute(conn)?;
 
+            println!("Publishing order created event");
             let mut publisher = OrderEventPublisher::new(conn);
             publisher.order_created(&order, &line_items, &restaurant)?;
 
-            let saga_state = models::CreateOrderSagaState {
-                order_id: order.id.clone(),
-                order_details: {
-                    let details = serialize_order_details(&order, &line_items, &restaurant);
-                    let mut buf = Vec::new();
-                    details.encode(&mut buf).unwrap();
-                    buf
-                },
-                ticket_id: None,
-            };
-            // TODO: saga
+            println!("Starting create order saga");
+            let saga_data = CreateOrderSagaState::new(&order.id, &line_items, &rid, &cid);
+            let saga = CreateOrderSaga::new();
+            let mut saga_manager = SagaManager::new(saga, conn);
+            saga_manager.create(saga_data)?;
 
+            println!("Transaction completed successfully");
             Ok(Response::new(serialize_order(order, line_items)))
         })
-        .map_err(|_| Status::internal("Internal server error"))
+        .map_err(|e: diesel::result::Error| {
+            println!("Transaction failed with error: {:?}", e);
+            Status::internal("Internal server error")
+        })
     }
 }
 

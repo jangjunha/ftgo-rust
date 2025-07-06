@@ -6,7 +6,8 @@ use ftgo_order_service::{
     command_handlers::handle_command,
     establish_connection,
     models::{self, NewOutbox},
-    schema, COMMAND_CHANNEL,
+    saga::{create_order::CreateOrderSaga, SagaManager},
+    schema, COMMAND_CHANNEL, REPLY_CHANNEL,
 };
 use ftgo_proto::{
     common::CommandReply,
@@ -27,6 +28,7 @@ const RESTAURANT_EVENT_CHANNEL: &'static str = "restaurant.event";
 enum AcceptedMessage {
     OrderCommand(OrderCommand),
     RestaurantEvent(RestaurantEvent),
+    CommandReply(CommandReply),
 }
 
 impl AcceptedMessage {
@@ -37,6 +39,9 @@ impl AcceptedMessage {
             )),
             RESTAURANT_EVENT_CHANNEL => Some(AcceptedMessage::RestaurantEvent(
                 RestaurantEvent::decode(value).expect("Cannot decode restaurant event"),
+            )),
+            REPLY_CHANNEL => Some(AcceptedMessage::CommandReply(
+                CommandReply::decode(value).expect("Cannot decode command reply"),
             )),
             _ => None,
         }
@@ -92,6 +97,16 @@ impl AcceptedMessage {
                     ),
                 })
                 .map_err(|_| ()),
+
+            AcceptedMessage::CommandReply(command_reply) => {
+                let create_order_saga = CreateOrderSaga::new();
+                conn.transaction(|conn| {
+                    let mut saga_manager = SagaManager::new(create_order_saga, conn);
+                    saga_manager.handle_reply(&command_reply)
+                })
+                .map_err(|_| ())?;
+                Ok(())
+            }
 
             AcceptedMessage::RestaurantEvent(restaurant_event) => {
                 match restaurant_event.event.unwrap() {
@@ -176,6 +191,7 @@ fn main() {
     let mut consumer = Consumer::from_hosts(vec![kafka_url])
         .with_topic(COMMAND_CHANNEL.to_string())
         .with_topic(RESTAURANT_EVENT_CHANNEL.to_string())
+        .with_topic(REPLY_CHANNEL.to_string())
         .with_group(GROUP.to_string())
         .with_fallback_offset(FetchOffset::Earliest)
         .with_offset_storage(Some(GroupOffsetStorage::Kafka))

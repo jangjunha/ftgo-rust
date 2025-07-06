@@ -95,7 +95,18 @@ pub struct Order {
     pub payment_token: Option<String>,
 }
 
-#[derive(Queryable, Selectable, Identifiable, Associations, Insertable, Debug, PartialEq)]
+#[derive(
+    Queryable,
+    Selectable,
+    Identifiable,
+    Associations,
+    Insertable,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+)]
 #[diesel(belongs_to(Order))]
 #[diesel(table_name = order_line_items)]
 pub struct OrderLineItem {
@@ -105,6 +116,12 @@ pub struct OrderLineItem {
     pub menu_item_id: String,
     pub name: String,
     pub price: BigDecimal,
+}
+
+impl OrderLineItem {
+    pub fn total_price(&self) -> BigDecimal {
+        self.price.clone() * self.quantity
+    }
 }
 
 #[derive(Queryable, Selectable, Identifiable, Insertable, Debug, PartialEq)]
