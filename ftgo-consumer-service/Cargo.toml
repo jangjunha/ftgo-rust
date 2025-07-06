@@ -9,8 +9,8 @@ diesel_migrations = "2.2.0"
 dotenvy = "0.15"
 uuid = { version = "1.15.1", features = ["v4", "fast-rng", "serde"] }
 
-tonic = { version = "0.12.3", features = ["tls"] }
-tonic-health = "0.12.3"
+tonic = "0.13.1"
+tonic-health = "0.13.1"
 prost = "0.13"
 tokio = { version = "1.0", features = [
     "rt-multi-thread",

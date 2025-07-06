@@ -4,7 +4,6 @@ use diesel::prelude::*;
 use diesel::result::Error::NotFound;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use ftgo_kitchen_service::events::KitchenEventPublisher;
-use ftgo_kitchen_service::schema::tickets::previous_state;
 use ftgo_proto::kitchen_service::{
     AcceptTicketPayload, GetTicketPayload, ListTicketPayload, ListTicketResponse,
     PreparingTicketPayload, ReadyForPickupTicketPayload, Ticket, TicketEdge, TicketLineItem,
