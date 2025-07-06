@@ -9,8 +9,8 @@ import "google/protobuf/timestamp.proto";
 import "money.proto";
 
 service OrderService {
-  rpc getOrder(GetOrderPayload) returns (Order) {}
-  rpc createOrder(CreateOrderPayload) returns (Order) {}
+  rpc GetOrder(GetOrderPayload) returns (Order) {}
+  rpc CreateOrder(CreateOrderPayload) returns (Order) {}
 }
 
 message GetOrderPayload {
