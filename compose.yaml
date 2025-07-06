@@ -1,4 +1,23 @@
 services:
+  ### API Gateway
+  api-gateway:
+    image: ftgo-api-gateway
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-api-gateway
+        - BINARY=ftgo-api-gateway
+    environment:
+      - AUTH_SERVICE_ENDPOINT=http://auth-rpc:8199
+      - RESTAURANT_SERVICE_ENDPOINT=http://restaurant-rpc:8101
+      - CONSUMER_SERVICE_ENDPOINT=http://consumer-rpc:8102
+      - ORDER_SERVICE_ENDPOINT=http://order-rpc:8103
+      - KITCHEN_SERVICE_ENDPOINT=http://kitchen-rpc:8105
+      - DELIVERY_SERVICE_ENDPOINT=http://delivery-rpc:8108
+      - ACCOUNTING_SERVICE_ENDPOINT=http://accounting-rpc:8104
+    ports:
+      - 8100:8100
+
   ### Auth
   auth-rpc:
     image: ftgo-auth-rpc
