@@ -205,7 +205,7 @@ services:
         - PACKAGE=ftgo-accounting-service
         - BINARY=rpc
     environment:
-      EVENTSTORE_URL: esdb://accounting-db:2113?tls=false
+      ESDB_URL: esdb://accounting-db:2113?tls=false
       PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
       KAFKA_URL: kafka:9094
     ports:
@@ -222,7 +222,7 @@ services:
         - PACKAGE=ftgo-accounting-service
         - BINARY=consumer
     environment:
-      EVENTSTORE_URL: esdb://accounting-db:2113?tls=false
+      ESDB_URL: esdb://accounting-db:2113?tls=false
       PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
       KAFKA_URL: kafka:9094
     depends_on:
@@ -237,7 +237,7 @@ services:
         - PACKAGE=ftgo-accounting-service
         - BINARY=projector
     environment:
-      EVENTSTORE_URL: esdb://accounting-db:2113?tls=false
+      ESDB_URL: esdb://accounting-db:2113?tls=false
       PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
     depends_on:
       - accounting-db
@@ -250,6 +250,10 @@ services:
       args:
         - PACKAGE=ftgo-accounting-service
         - BINARY=producer
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
     environment:
       ESDB_URL: esdb://accounting-db:2113?tls=false
       KAFKA_URL: kafka:9094

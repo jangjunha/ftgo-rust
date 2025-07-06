@@ -12,7 +12,7 @@ pub const COMMAND_CHANNEL: &str = "accounting.command";
 
 pub fn establish_esdb_client() -> eventstore::Client {
     dotenv().ok();
-    let database_url = env::var("ESDB_URL").expect("DATABASE_URL must be set");
+    let database_url = env::var("ESDB_URL").expect("ESDB_URL must be set");
     eventstore::Client::new(
         database_url
             .parse()
