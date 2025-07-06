@@ -1,4 +1,19 @@
 services:
+  ### Auth
+  auth-rpc:
+    image: ftgo-auth-rpc
+    build:
+      context: .
+      args:
+        - PACKAGE=ftgo-auth-service
+        - BINARY=rpc
+    environment:
+      DATABASE_URL: postgres://postgres@auth-db/auth
+    ports:
+      - 8199:8199
+    depends_on:
+      - auth-db
+
   ### Restaurant
   restaurant-rpc:
     image: ftgo-restaurant-rpc
@@ -261,6 +276,16 @@ services:
       - accounting-db
 
   ### Database
+  auth-db:
+    restart: always
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=auth
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    ports:
+      - 8299:5432
   restaurant-db:
     restart: always
     image: postgres:17-alpine
@@ -411,6 +436,7 @@ services:
       "
 
 volumes:
+  auth-db-data: {}
   restaurant-db-data: {}
   consumer-db-data: {}
   kitchen-db-data: {}

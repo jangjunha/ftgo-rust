@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [ "ftgo-accounting-service",
+members = [ "ftgo-accounting-service", "ftgo-auth-service",
     "ftgo-consumer-service", "ftgo-delivery-service",
     "ftgo-kitchen-service", "ftgo-order-service",
     "ftgo-proto",

@@ -2,6 +2,10 @@ pub mod common {
     tonic::include_proto!("me.jangjunha.ftgo.common");
 }
 
+pub mod auth_service {
+    tonic::include_proto!("me.jangjunha.ftgo.auth_service");
+}
+
 pub mod restaurant_service {
     tonic::include_proto!("me.jangjunha.ftgo.restaurant_service");
 }

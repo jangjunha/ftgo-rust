@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package me.jangjunha.ftgo.auth_service;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service AuthService {
+  rpc CreateUser(CreateUserPayload) returns (User) {}
+  rpc GetUser(GetUserPayload) returns (User) {}
+  rpc VerifyUserCredential(VerifyUserCredentialPayload) returns (google.protobuf.Empty) {}
+
+  rpc GrantRestaurantToUser(GrantRestaurantToUserPayload) returns (google.protobuf.Empty) {}
+  rpc GrantConsumerToUser(GrantConsumerToUserPayload) returns (google.protobuf.Empty) {}
+  rpc GrantCourierToUser(GrantCourierToUserPayload) returns (google.protobuf.Empty) {}
+}
+
+enum CredentialType {
+  PASSPHRASE = 0;
+}
+
+message User {
+  string id = 1;
+  string username = 2;
+  google.protobuf.Timestamp createdAt = 3;
+  repeated string grantedRestaurants = 4;
+  repeated string grantedConsumers = 5;
+  repeated string grantedCouriers = 6;
+}
+
+message CreateUserPayload {
+  string username = 1;
+  string passphrase = 2;
+}
+
+message GetUserPayload {
+  string id = 1;
+}
+
+message GrantRestaurantToUserPayload {
+  string userId = 1;
+  string restaurantId = 2;
+}
+
+message GrantConsumerToUserPayload {
+  string userId = 1;
+  string consumerId = 2;
+}
+
+message GrantCourierToUserPayload {
+  string userId = 1;
+  string courierId = 2;
+}
+
+message VerifyUserCredentialPayload {
+  CredentialType credentialType = 1;
+  string sub = 2;
+  optional string username = 3;
+}
