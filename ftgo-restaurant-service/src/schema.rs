@@ -29,8 +29,4 @@ diesel::table! {
 
 diesel::joinable!(restaurant_menu_items -> restaurants (restaurant_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    outbox,
-    restaurant_menu_items,
-    restaurants,
-);
+diesel::allow_tables_to_appear_in_same_query!(outbox, restaurant_menu_items, restaurants,);
