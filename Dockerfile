@@ -9,17 +9,17 @@ RUN cargo chef prepare --recipe-path recipe.json --bin ${BINARY}
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --recipe-path recipe.json --release -p ${PACKAGE} --bin ${BINARY}
+RUN cargo chef cook --recipe-path recipe.json -p ${PACKAGE} --bin ${BINARY}
 
 RUN apt-get update && apt-get install -y \
     pkg-config libssl-dev libpq-dev protobuf-compiler
 COPY . .
-RUN cargo build -r -p ${PACKAGE} --bin ${BINARY}
+RUN cargo build -p ${PACKAGE} --bin ${BINARY}
 
 FROM debian:bookworm-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libpq5
 ARG BINARY
-COPY --from=builder /app/target/release/${BINARY} /usr/local/bin/app
+COPY --from=builder /app/target/debug/${BINARY} /usr/local/bin/app
 CMD ["app"]
