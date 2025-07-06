@@ -73,13 +73,18 @@ impl EventStoreProducer {
                     self.try_decode_accounting_event(&recorded_event.data)
                 {
                     // Handle command reply events separately
-                    if let Some(accounting_event::Event::CommandReplyRequested(reply_request)) = &accounting_event.event {
+                    if let Some(accounting_event::Event::CommandReplyRequested(reply_request)) =
+                        &accounting_event.event
+                    {
                         if let Some(reply) = &reply_request.reply {
                             self.publish_command_reply(reply, &reply_request.reply_channel)?;
                         }
                     } else {
                         // Publish regular accounting events
-                        self.publish_accounting_event(&accounting_event, &recorded_event.stream_id)?;
+                        self.publish_accounting_event(
+                            &accounting_event,
+                            &recorded_event.stream_id,
+                        )?;
                     }
                     processed_any = true;
                     latest_position = Some(recorded_event.position.commit);
