@@ -168,20 +168,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Starting Accounting EventStore Producer...");
 
-    let mut producer = EventStoreProducer::new().await?;
+    let mut producer = EventStoreProducer::new().await.expect("Failed to initiate");
 
     loop {
-        match producer.process_events().await {
-            Ok(true) => {
+        match producer.process_events().await.unwrap() {
+            true => {
                 // Processed some events, continue immediately
             }
-            Ok(false) => {
+            false => {
                 // No events to process, sleep for a bit
                 tokio::time::sleep(Duration::from_secs(1)).await;
-            }
-            Err(err) => {
-                eprintln!("Error processing events: {:?}", err);
-                tokio::time::sleep(Duration::from_secs(5)).await;
             }
         }
     }
