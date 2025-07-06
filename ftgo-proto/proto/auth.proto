@@ -8,11 +8,13 @@ import "google/protobuf/timestamp.proto";
 service AuthService {
   rpc CreateUser(CreateUserPayload) returns (User) {}
   rpc GetUser(GetUserPayload) returns (User) {}
-  rpc VerifyUserCredential(VerifyUserCredentialPayload) returns (google.protobuf.Empty) {}
 
   rpc GrantRestaurantToUser(GrantRestaurantToUserPayload) returns (google.protobuf.Empty) {}
   rpc GrantConsumerToUser(GrantConsumerToUserPayload) returns (google.protobuf.Empty) {}
   rpc GrantCourierToUser(GrantCourierToUserPayload) returns (google.protobuf.Empty) {}
+
+  rpc IssueToken(IssueTokenPayload) returns (TokenResponse) {}
+  rpc GetTokenInfo(GetTokenInfoPayload) returns (TokenInfo) {}
 }
 
 enum CredentialType {
@@ -52,8 +54,22 @@ message GrantCourierToUserPayload {
   string courierId = 2;
 }
 
-message VerifyUserCredentialPayload {
+message IssueTokenPayload {
   CredentialType credentialType = 1;
   string sub = 2;
   optional string username = 3;
+}
+
+message TokenResponse {
+  string tokenType = 1;
+  string accessToken = 2;
+  int64 expiresIn = 3;
+}
+
+message GetTokenInfoPayload {
+  string token = 1;
+}
+
+message TokenInfo {
+  string userId = 1;
 }

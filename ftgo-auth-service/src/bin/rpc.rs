@@ -1,6 +1,8 @@
+use std::env;
+
 use argon2::password_hash::{rand_core::OsRng, PasswordHasher, PasswordVerifier, SaltString};
 use argon2::{Argon2, PasswordHash};
-use chrono::Utc;
+use chrono::{TimeDelta, Utc};
 use diesel::{insert_into, prelude::*, result::Error::NotFound};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use ftgo_auth_service::models::{
@@ -8,10 +10,13 @@ use ftgo_auth_service::models::{
 };
 use ftgo_proto::auth_service::auth_service_server::{AuthService, AuthServiceServer};
 use ftgo_proto::auth_service::{
-    CreateUserPayload, CredentialType, GetUserPayload, GrantConsumerToUserPayload,
-    GrantCourierToUserPayload, GrantRestaurantToUserPayload, User, VerifyUserCredentialPayload,
+    CreateUserPayload, CredentialType, GetTokenInfoPayload, GetUserPayload,
+    GrantConsumerToUserPayload, GrantCourierToUserPayload, GrantRestaurantToUserPayload,
+    IssueTokenPayload, TokenInfo, TokenResponse, User,
 };
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use prost_types::Timestamp;
+use serde::{Deserialize, Serialize};
 use tonic::{transport::Server, Request, Response, Status};
 use uuid::Uuid;
 
@@ -19,8 +24,29 @@ use ftgo_auth_service::{establish_connection, models, schema};
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
-#[derive(Default)]
-pub struct AuthServiceImpl {}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    exp: usize,
+    iat: usize,
+    sub: String,
+}
+
+pub struct AuthServiceImpl {
+    pub encoding_key: EncodingKey,
+    pub decoding_key: DecodingKey,
+    pub access_token_expires: TimeDelta,
+}
+
+impl AuthServiceImpl {
+    pub fn new() -> Self {
+        let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY must be set");
+        Self {
+            encoding_key: EncodingKey::from_secret(secret_key.as_ref()),
+            decoding_key: DecodingKey::from_secret(secret_key.as_ref()),
+            access_token_expires: TimeDelta::hours(8),
+        }
+    }
+}
 
 #[tonic::async_trait]
 impl AuthService for AuthServiceImpl {
@@ -121,10 +147,10 @@ impl AuthService for AuthServiceImpl {
         }))
     }
 
-    async fn verify_user_credential(
+    async fn issue_token(
         &self,
-        request: Request<VerifyUserCredentialPayload>,
-    ) -> Result<Response<()>, Status> {
+        request: Request<IssueTokenPayload>,
+    ) -> Result<Response<TokenResponse>, Status> {
         let payload = request.into_inner();
         let conn = &mut establish_connection();
 
@@ -159,12 +185,46 @@ impl AuthService for AuthServiceImpl {
                             .is_ok()
                     });
                 if verified {
-                    Ok(Response::new(()))
+                    let now = Utc::now();
+                    let claims = Claims {
+                        exp: (now + self.access_token_expires).timestamp() as usize,
+                        iat: now.timestamp() as usize,
+                        sub: user.id.to_string(),
+                    };
+                    let access_token = jsonwebtoken::encode(
+                        &jsonwebtoken::Header::default(),
+                        &claims,
+                        &self.encoding_key,
+                    )
+                    .map_err(|_| Status::internal("Cannot issue token"))?;
+                    Ok(Response::new(TokenResponse {
+                        token_type: "bearer".to_string(),
+                        access_token: access_token,
+                        expires_in: self.access_token_expires.num_seconds(),
+                    }))
                 } else {
                     Err(invalid_credentials())
                 }
             }
         }
+    }
+
+    async fn get_token_info(
+        &self,
+        request: Request<GetTokenInfoPayload>,
+    ) -> Result<Response<TokenInfo>, Status> {
+        let payload = request.into_inner();
+
+        let token = jsonwebtoken::decode::<Claims>(
+            &payload.token,
+            &self.decoding_key,
+            &jsonwebtoken::Validation::default(),
+        )
+        .map_err(|_| Status::invalid_argument("Invalid token"))?;
+
+        Ok(Response::new(TokenInfo {
+            user_id: token.claims.sub.to_string(),
+        }))
     }
 
     async fn grant_restaurant_to_user(
@@ -238,7 +298,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Failed to run migrations");
 
     let addr = "0.0.0.0:8199".parse().unwrap();
-    let service = AuthServiceImpl::default();
+    let service = AuthServiceImpl::new();
 
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter

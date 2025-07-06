@@ -8,6 +8,7 @@ services:
         - PACKAGE=ftgo-auth-service
         - BINARY=rpc
     environment:
+      SECRET_KEY: ${SECRET_KEY}
       DATABASE_URL: postgres://postgres@auth-db/auth
     ports:
       - 8199:8199
