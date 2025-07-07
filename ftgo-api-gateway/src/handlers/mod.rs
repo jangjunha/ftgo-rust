@@ -173,6 +173,7 @@ async fn verify_order_access(
     paths(
         auth::create_user,
         auth::issue_token,
+        auth::get_user_profile,
         consumer::create_consumer,
         consumer::get_consumer,
         restaurant::create_restaurant,
@@ -198,6 +199,7 @@ async fn verify_order_access(
         schemas(
             crate::models::CreateUserRequest,
             crate::models::CreateUserResponse,
+            crate::models::UserProfile,
             crate::models::IssueTokenRequest,
             crate::models::IssueTokenResponse,
             crate::models::CreateConsumerRequest,

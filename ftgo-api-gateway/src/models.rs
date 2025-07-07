@@ -88,6 +88,22 @@ pub struct Consumer {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+pub struct UserProfile {
+    /// Unique identifier for the user
+    pub id: Uuid,
+    /// Username of the user
+    pub username: String,
+    /// Timestamp when the user was created
+    pub created_at: DateTime<Utc>,
+    /// List of restaurant IDs the user has access to
+    pub granted_restaurants: Vec<Uuid>,
+    /// List of consumer IDs the user has access to
+    pub granted_consumers: Vec<Uuid>,
+    /// List of courier IDs the user has access to
+    pub granted_couriers: Vec<Uuid>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct Restaurant {
     /// Unique identifier for the restaurant
     pub id: Uuid,
