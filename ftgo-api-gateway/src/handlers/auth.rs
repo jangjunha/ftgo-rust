@@ -57,7 +57,7 @@ pub async fn create_user(
 #[utoipa::path(
     post,
     path = "/auth/token",
-    request_body = IssueTokenRequest,
+    request_body(content = IssueTokenRequest, content_type = "application/x-www-form-urlencoded"),
     responses(
         (status = 200, description = "Token issued successfully", body = IssueTokenResponse),
         (status = 401, description = "Invalid credentials", body = ApiErrorResponse),
