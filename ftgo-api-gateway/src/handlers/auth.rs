@@ -1,7 +1,5 @@
-use axum::{Form, extract::State, response::Json, Router, routing::post};
-use ftgo_proto::auth_service::{
-    CreateUserPayload, CredentialType, IssueTokenPayload,
-};
+use axum::{Form, Router, extract::State, response::Json, routing::post};
+use ftgo_proto::auth_service::{CreateUserPayload, CredentialType, IssueTokenPayload};
 use tracing::instrument;
 
 use crate::error::ApiError;

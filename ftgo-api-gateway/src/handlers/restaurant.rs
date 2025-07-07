@@ -1,8 +1,14 @@
-use axum::{extract::{State, Path}, http::HeaderMap, response::Json, Router, routing::{post, get}};
+use axum::{
+    Router,
+    extract::{Path, State},
+    http::HeaderMap,
+    response::Json,
+    routing::{get, post},
+};
 use ftgo_proto::{
     auth_service::GrantRestaurantToUserPayload,
     common::Money,
-    restaurant_service::{CreateRestaurantPayload, MenuItem, GetRestaurantPayload},
+    restaurant_service::{CreateRestaurantPayload, GetRestaurantPayload, MenuItem},
 };
 use tracing::instrument;
 
@@ -13,8 +19,11 @@ use super::{AppState, extract_user_id_from_token};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/restaurants", post(create_restaurant).get(list_restaurants))
-        .route("/restaurants/:id", get(get_restaurant))
+        .route(
+            "/restaurants",
+            post(create_restaurant).get(list_restaurants),
+        )
+        .route("/restaurants/{id}", get(get_restaurant))
 }
 
 #[utoipa::path(
@@ -76,8 +85,8 @@ pub async fn create_restaurant(
         .await
         .map_err(|e| ApiError::ServiceUnavailable(format!("Auth service error: {e}")))?;
 
-    Ok(Json(CreateRestaurantResponse { 
-        id: restaurant_id.parse().map_err(|_| ApiError::InvalidToken)? 
+    Ok(Json(CreateRestaurantResponse {
+        id: restaurant_id.parse().map_err(|_| ApiError::InvalidToken)?,
     }))
 }
 
@@ -107,20 +116,22 @@ pub async fn list_restaurants(
     let restaurants = restaurants_response
         .restaurants
         .into_iter()
-        .map(|r| Ok::<Restaurant, ApiError>(Restaurant {
-            id: r.id.parse().map_err(|_| ApiError::InvalidToken)?,
-            name: r.name,
-            address: r.address,
-            menu_items: r
-                .menu_items
-                .into_iter()
-                .map(|item| crate::models::MenuItemResponse {
-                    id: item.id,
-                    name: item.name,
-                    price: item.price.map(|p| p.amount).unwrap_or_default(),
-                })
-                .collect(),
-        }))
+        .map(|r| {
+            Ok::<Restaurant, ApiError>(Restaurant {
+                id: r.id.parse().map_err(|_| ApiError::InvalidToken)?,
+                name: r.name,
+                address: r.address,
+                menu_items: r
+                    .menu_items
+                    .into_iter()
+                    .map(|item| crate::models::MenuItemResponse {
+                        id: item.id,
+                        name: item.name,
+                        price: item.price.map(|p| p.amount).unwrap_or_default(),
+                    })
+                    .collect(),
+            })
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Json(ListRestaurantsResponse { restaurants }))
@@ -160,7 +171,11 @@ pub async fn get_restaurant(
         })?;
 
     let response_data = response.into_inner();
-    let restaurant = response_data.restaurant.ok_or(ApiError::ServiceUnavailable("Restaurant not found".to_string()))?;
+    let restaurant = response_data
+        .restaurant
+        .ok_or(ApiError::ServiceUnavailable(
+            "Restaurant not found".to_string(),
+        ))?;
 
     Ok(Json(Restaurant {
         id: restaurant.id.parse().map_err(|_| ApiError::InvalidToken)?,

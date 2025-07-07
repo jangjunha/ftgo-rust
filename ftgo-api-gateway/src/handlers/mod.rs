@@ -1,22 +1,24 @@
+pub mod accounting;
 pub mod auth;
 pub mod consumer;
-pub mod restaurant;
-pub mod order;
-pub mod kitchen;
 pub mod delivery;
-pub mod accounting;
+pub mod kitchen;
+pub mod order;
+pub mod restaurant;
 
 // Re-export routers for easier importing
+pub use accounting::router as accounting_router;
 pub use auth::router as auth_router;
 pub use consumer::router as consumer_router;
-pub use restaurant::router as restaurant_router;
-pub use order::router as order_router;
-pub use kitchen::router as kitchen_router;
 pub use delivery::router as delivery_router;
-pub use accounting::router as accounting_router;
+pub use kitchen::router as kitchen_router;
+pub use order::router as order_router;
+pub use restaurant::router as restaurant_router;
 
 use axum::http::HeaderMap;
-use ftgo_proto::auth_service::{GetTokenInfoPayload, GetUserPayload, auth_service_client::AuthServiceClient};
+use ftgo_proto::auth_service::{
+    GetTokenInfoPayload, GetUserPayload, auth_service_client::AuthServiceClient,
+};
 use tonic::transport::Channel;
 use utoipa::OpenApi;
 
@@ -25,12 +27,17 @@ use crate::error::ApiError;
 #[derive(Clone)]
 pub struct AppState {
     pub auth_client: AuthServiceClient<Channel>,
-    pub consumer_client: ftgo_proto::consumer_service::consumer_service_client::ConsumerServiceClient<Channel>,
+    pub consumer_client:
+        ftgo_proto::consumer_service::consumer_service_client::ConsumerServiceClient<Channel>,
     pub order_client: ftgo_proto::order_service::order_service_client::OrderServiceClient<Channel>,
-    pub restaurant_client: ftgo_proto::restaurant_service::restaurant_service_client::RestaurantServiceClient<Channel>,
-    pub kitchen_client: ftgo_proto::kitchen_service::kitchen_service_client::KitchenServiceClient<Channel>,
-    pub delivery_client: ftgo_proto::delivery_service::delivery_service_client::DeliveryServiceClient<Channel>,
-    pub accounting_client: ftgo_proto::accounting_service::accounting_service_client::AccountingServiceClient<Channel>,
+    pub restaurant_client:
+        ftgo_proto::restaurant_service::restaurant_service_client::RestaurantServiceClient<Channel>,
+    pub kitchen_client:
+        ftgo_proto::kitchen_service::kitchen_service_client::KitchenServiceClient<Channel>,
+    pub delivery_client:
+        ftgo_proto::delivery_service::delivery_service_client::DeliveryServiceClient<Channel>,
+    pub accounting_client:
+        ftgo_proto::accounting_service::accounting_service_client::AccountingServiceClient<Channel>,
 }
 
 // Shared utility functions
@@ -66,15 +73,15 @@ async fn verify_consumer_access(
     consumer_id: &str,
 ) -> Result<(), ApiError> {
     let user_id = extract_user_id_from_token(headers, auth_client).await?;
-    
+
     let request = tonic::Request::new(GetUserPayload { id: user_id });
     let response = auth_client
         .get_user(request)
         .await
         .map_err(|e| ApiError::ServiceUnavailable(format!("Auth service error: {e}")))?;
-    
+
     let user = response.into_inner();
-    
+
     // Check if user has access to this consumer
     if user.granted_consumers.contains(&consumer_id.to_string()) {
         Ok(())
@@ -89,17 +96,20 @@ async fn verify_restaurant_access(
     restaurant_id: &str,
 ) -> Result<(), ApiError> {
     let user_id = extract_user_id_from_token(headers, auth_client).await?;
-    
+
     let request = tonic::Request::new(GetUserPayload { id: user_id });
     let response = auth_client
         .get_user(request)
         .await
         .map_err(|e| ApiError::ServiceUnavailable(format!("Auth service error: {e}")))?;
-    
+
     let user = response.into_inner();
-    
+
     // Check if user has access to this restaurant
-    if user.granted_restaurants.contains(&restaurant_id.to_string()) {
+    if user
+        .granted_restaurants
+        .contains(&restaurant_id.to_string())
+    {
         Ok(())
     } else {
         Err(ApiError::AuthenticationFailed)
@@ -112,15 +122,15 @@ async fn verify_courier_access(
     courier_id: &str,
 ) -> Result<(), ApiError> {
     let user_id = extract_user_id_from_token(headers, auth_client).await?;
-    
+
     let request = tonic::Request::new(GetUserPayload { id: user_id });
     let response = auth_client
         .get_user(request)
         .await
         .map_err(|e| ApiError::ServiceUnavailable(format!("Auth service error: {e}")))?;
-    
+
     let user = response.into_inner();
-    
+
     // Check if user has access to this courier
     if user.granted_couriers.contains(&courier_id.to_string()) {
         Ok(())
@@ -136,19 +146,21 @@ async fn verify_order_access(
     restaurant_id: &str,
 ) -> Result<(), ApiError> {
     let user_id = extract_user_id_from_token(headers, auth_client).await?;
-    
+
     let request = tonic::Request::new(GetUserPayload { id: user_id });
     let response = auth_client
         .get_user(request)
         .await
         .map_err(|e| ApiError::ServiceUnavailable(format!("Auth service error: {e}")))?;
-    
+
     let user = response.into_inner();
-    
+
     // Check if user has access to either the consumer (order owner) or restaurant (restaurant owner)
     let has_consumer_access = user.granted_consumers.contains(&consumer_id.to_string());
-    let has_restaurant_access = user.granted_restaurants.contains(&restaurant_id.to_string());
-    
+    let has_restaurant_access = user
+        .granted_restaurants
+        .contains(&restaurant_id.to_string());
+
     if has_consumer_access || has_restaurant_access {
         Ok(())
     } else {
@@ -184,24 +196,24 @@ async fn verify_order_access(
     ),
     components(
         schemas(
-            crate::models::CreateUserRequest, 
-            crate::models::CreateUserResponse, 
-            crate::models::IssueTokenRequest, 
-            crate::models::IssueTokenResponse, 
-            crate::models::CreateConsumerRequest, 
-            crate::models::CreateConsumerResponse, 
-            crate::models::Consumer, 
-            crate::models::CreateRestaurantRequest, 
-            crate::models::CreateRestaurantResponse, 
-            crate::models::Restaurant, 
-            crate::models::MenuItemResponse, 
-            crate::models::ListRestaurantsResponse, 
-            crate::models::CreateOrderRequest, 
-            crate::models::CreateOrderResponse, 
-            crate::models::OrderItemRequest, 
-            crate::models::OrderLineItem, 
-            crate::models::DeliveryInformation, 
-            crate::models::MenuItemRequest, 
+            crate::models::CreateUserRequest,
+            crate::models::CreateUserResponse,
+            crate::models::IssueTokenRequest,
+            crate::models::IssueTokenResponse,
+            crate::models::CreateConsumerRequest,
+            crate::models::CreateConsumerResponse,
+            crate::models::Consumer,
+            crate::models::CreateRestaurantRequest,
+            crate::models::CreateRestaurantResponse,
+            crate::models::Restaurant,
+            crate::models::MenuItemResponse,
+            crate::models::ListRestaurantsResponse,
+            crate::models::CreateOrderRequest,
+            crate::models::CreateOrderResponse,
+            crate::models::OrderItemRequest,
+            crate::models::OrderLineItem,
+            crate::models::DeliveryInformation,
+            crate::models::MenuItemRequest,
             crate::models::KitchenTicket,
             crate::models::TicketLineItem,
             crate::models::ListTicketsResponse,

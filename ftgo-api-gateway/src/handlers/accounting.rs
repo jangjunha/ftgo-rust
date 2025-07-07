@@ -1,4 +1,10 @@
-use axum::{extract::{State, Path}, http::HeaderMap, response::Json, Router, routing::get};
+use axum::{
+    Router,
+    extract::{Path, State},
+    http::HeaderMap,
+    response::Json,
+    routing::get,
+};
 use ftgo_proto::accounting_service::GetAccountPayload;
 use tracing::instrument;
 
@@ -8,8 +14,7 @@ use crate::models::*;
 use super::{AppState, verify_consumer_access};
 
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/consumers/{consumer_id}/account", get(get_account))
+    Router::new().route("/consumers/{consumer_id}/account", get(get_account))
 }
 
 #[utoipa::path(
@@ -36,27 +41,24 @@ pub async fn get_account(
     Path(consumer_id): Path<String>,
 ) -> Result<Json<AccountDetailsResponse>, ApiError> {
     let mut auth_client = state.auth_client.clone();
-    
+
     // Verify user has access to this consumer (since account_id = consumer_id)
     verify_consumer_access(&headers, &mut auth_client, &consumer_id).await?;
 
     let mut accounting_client = state.accounting_client.clone();
 
     // Account ID equals Consumer ID
-    let request = tonic::Request::new(GetAccountPayload { 
-        account_id: consumer_id.clone() 
+    let request = tonic::Request::new(GetAccountPayload {
+        account_id: consumer_id.clone(),
     });
 
-    let response = accounting_client
-        .get_account(request)
-        .await
-        .map_err(|e| {
-            if e.code() == tonic::Code::NotFound {
-                ApiError::ServiceUnavailable("Account not found".to_string())
-            } else {
-                ApiError::ServiceUnavailable(format!("Accounting service error: {e}"))
-            }
-        })?;
+    let response = accounting_client.get_account(request).await.map_err(|e| {
+        if e.code() == tonic::Code::NotFound {
+            ApiError::ServiceUnavailable("Account not found".to_string())
+        } else {
+            ApiError::ServiceUnavailable(format!("Accounting service error: {e}"))
+        }
+    })?;
 
     let account = response.into_inner();
 

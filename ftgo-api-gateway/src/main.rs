@@ -1,13 +1,13 @@
 use axum::Router;
 use dotenvy::dotenv;
 use ftgo_proto::{
+    accounting_service::accounting_service_client::AccountingServiceClient,
     auth_service::auth_service_client::AuthServiceClient,
     consumer_service::consumer_service_client::ConsumerServiceClient,
+    delivery_service::delivery_service_client::DeliveryServiceClient,
+    kitchen_service::kitchen_service_client::KitchenServiceClient,
     order_service::order_service_client::OrderServiceClient,
     restaurant_service::restaurant_service_client::RestaurantServiceClient,
-    kitchen_service::kitchen_service_client::KitchenServiceClient,
-    delivery_service::delivery_service_client::DeliveryServiceClient,
-    accounting_service::accounting_service_client::AccountingServiceClient,
 };
 use tower_http::cors::CorsLayer;
 use tracing::info;
@@ -18,7 +18,10 @@ mod error;
 mod handlers;
 mod models;
 
-use handlers::{ApiDoc, AppState, auth_router, consumer_router, restaurant_router, order_router, kitchen_router, delivery_router, accounting_router};
+use handlers::{
+    ApiDoc, AppState, accounting_router, auth_router, consumer_router, delivery_router,
+    kitchen_router, order_router, restaurant_router,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

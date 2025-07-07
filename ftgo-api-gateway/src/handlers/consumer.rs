@@ -1,4 +1,10 @@
-use axum::{extract::{State, Path}, http::HeaderMap, response::Json, Router, routing::{post, get}};
+use axum::{
+    Router,
+    extract::{Path, State},
+    http::HeaderMap,
+    response::Json,
+    routing::{get, post},
+};
 use ftgo_proto::{
     auth_service::GrantConsumerToUserPayload,
     consumer_service::{CreateConsumerPayload, GetConsumerPayload},
@@ -13,7 +19,7 @@ use super::{AppState, extract_user_id_from_token, verify_consumer_access};
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/consumers", post(create_consumer))
-        .route("/consumers/:id", get(get_consumer))
+        .route("/consumers/{id}", get(get_consumer))
 }
 
 #[utoipa::path(
@@ -41,9 +47,7 @@ pub async fn create_consumer(
 
     let mut consumer_client = state.consumer_client.clone();
 
-    let request = tonic::Request::new(CreateConsumerPayload {
-        name: payload.name,
-    });
+    let request = tonic::Request::new(CreateConsumerPayload { name: payload.name });
 
     let response = consumer_client
         .create_consumer(request)
@@ -63,8 +67,8 @@ pub async fn create_consumer(
         .await
         .map_err(|e| ApiError::ServiceUnavailable(format!("Auth service error: {e}")))?;
 
-    Ok(Json(CreateConsumerResponse { 
-        id: consumer_id.parse().map_err(|_| ApiError::InvalidToken)? 
+    Ok(Json(CreateConsumerResponse {
+        id: consumer_id.parse().map_err(|_| ApiError::InvalidToken)?,
     }))
 }
 
@@ -92,7 +96,7 @@ pub async fn get_consumer(
     Path(consumer_id): Path<String>,
 ) -> Result<Json<Consumer>, ApiError> {
     let mut auth_client = state.auth_client.clone();
-    
+
     // Verify user has access to this consumer
     verify_consumer_access(&headers, &mut auth_client, &consumer_id).await?;
 
@@ -100,19 +104,18 @@ pub async fn get_consumer(
 
     let request = tonic::Request::new(GetConsumerPayload { consumer_id });
 
-    let response = consumer_client
-        .get_consumer(request)
-        .await
-        .map_err(|e| {
-            if e.code() == tonic::Code::NotFound {
-                ApiError::ServiceUnavailable("Consumer not found".to_string())
-            } else {
-                ApiError::ServiceUnavailable(format!("Consumer service error: {e}"))
-            }
-        })?;
+    let response = consumer_client.get_consumer(request).await.map_err(|e| {
+        if e.code() == tonic::Code::NotFound {
+            ApiError::ServiceUnavailable("Consumer not found".to_string())
+        } else {
+            ApiError::ServiceUnavailable(format!("Consumer service error: {e}"))
+        }
+    })?;
 
     let response_data = response.into_inner();
-    let consumer = response_data.consumer.ok_or(ApiError::ServiceUnavailable("Consumer not found".to_string()))?;
+    let consumer = response_data.consumer.ok_or(ApiError::ServiceUnavailable(
+        "Consumer not found".to_string(),
+    ))?;
 
     Ok(Json(Consumer {
         id: consumer.id.parse().map_err(|_| ApiError::InvalidToken)?,

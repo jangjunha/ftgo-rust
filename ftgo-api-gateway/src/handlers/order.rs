@@ -83,8 +83,14 @@ pub async fn create_order(
     Ok(Json(CreateOrderResponse {
         id: order.id.parse().map_err(|_| ApiError::InvalidToken)?,
         state: state_str.to_string(),
-        consumer_id: order.consumer_id.parse().map_err(|_| ApiError::InvalidToken)?,
-        restaurant_id: order.restaurant_id.parse().map_err(|_| ApiError::InvalidToken)?,
+        consumer_id: order
+            .consumer_id
+            .parse()
+            .map_err(|_| ApiError::InvalidToken)?,
+        restaurant_id: order
+            .restaurant_id
+            .parse()
+            .map_err(|_| ApiError::InvalidToken)?,
         line_items: order
             .line_items
             .into_iter()
@@ -171,8 +177,14 @@ pub async fn get_order(
     Ok(Json(CreateOrderResponse {
         id: order.id.parse().map_err(|_| ApiError::InvalidToken)?,
         state: state_str.to_string(),
-        consumer_id: order.consumer_id.parse().map_err(|_| ApiError::InvalidToken)?,
-        restaurant_id: order.restaurant_id.parse().map_err(|_| ApiError::InvalidToken)?,
+        consumer_id: order
+            .consumer_id
+            .parse()
+            .map_err(|_| ApiError::InvalidToken)?,
+        restaurant_id: order
+            .restaurant_id
+            .parse()
+            .map_err(|_| ApiError::InvalidToken)?,
         line_items: order
             .line_items
             .into_iter()

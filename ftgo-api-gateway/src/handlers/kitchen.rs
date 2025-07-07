@@ -1,9 +1,9 @@
 use axum::{
+    Router,
     extract::{Path, Query, State},
     http::HeaderMap,
     response::Json,
     routing::{get, post},
-    Router,
 };
 use ftgo_proto::kitchen_service::{
     AcceptTicketPayload, GetTicketPayload, ListTicketPayload, PreparingTicketPayload,
@@ -15,7 +15,7 @@ use tracing::instrument;
 use crate::error::ApiError;
 use crate::models::*;
 
-use super::{verify_restaurant_access, AppState};
+use super::{AppState, verify_restaurant_access};
 use ftgo_proto::kitchen_service::Ticket;
 
 // Helper function to convert proto Ticket to our KitchenTicket model

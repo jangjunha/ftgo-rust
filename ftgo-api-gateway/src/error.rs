@@ -9,8 +9,6 @@ pub enum ApiError {
     InvalidToken,
     #[error("Service unavailable: {0}")]
     ServiceUnavailable(String),
-    #[error("Internal server error: {0}")]
-    InternalError(String),
 }
 
 impl axum::response::IntoResponse for ApiError {
@@ -22,7 +20,6 @@ impl axum::response::IntoResponse for ApiError {
             ),
             ApiError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token".to_string()),
             ApiError::ServiceUnavailable(msg) => (StatusCode::SERVICE_UNAVAILABLE, msg.clone()),
-            ApiError::InternalError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
         };
 
         let body = Json(json!({
