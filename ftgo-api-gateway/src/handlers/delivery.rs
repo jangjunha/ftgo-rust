@@ -12,13 +12,13 @@ use super::{AppState, extract_user_id_from_token, verify_courier_access};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/orders/:order_id/delivery", get(get_delivery_status))
+        .route("/orders/{order_id}/delivery", get(get_delivery_status))
         .route("/couriers", post(create_courier))
-        .route("/couriers/:courier_id", get(get_courier))
-        .route("/couriers/:courier_id/availability", put(update_courier_availability))
-        .route("/couriers/:courier_id/plan", get(get_courier_plan))
-        .route("/deliveries/:delivery_id/pickup", post(pickup_delivery))
-        .route("/deliveries/:delivery_id/dropoff", post(dropoff_delivery))
+        .route("/couriers/{courier_id}", get(get_courier))
+        .route("/couriers/{courier_id}/availability", put(update_courier_availability))
+        .route("/couriers/{courier_id}/plan", get(get_courier_plan))
+        .route("/deliveries/{delivery_id}/pickup", post(pickup_delivery))
+        .route("/deliveries/{delivery_id}/dropoff", post(dropoff_delivery))
 }
 
 #[utoipa::path(

@@ -1,6 +1,12 @@
-use axum::{extract::{State, Path, Query}, http::HeaderMap, response::Json, Router, routing::{get, post}};
+use axum::{
+    extract::{Path, Query, State},
+    http::HeaderMap,
+    response::Json,
+    routing::{get, post},
+    Router,
+};
 use ftgo_proto::kitchen_service::{
-    ListTicketPayload, GetTicketPayload, AcceptTicketPayload, PreparingTicketPayload,
+    AcceptTicketPayload, GetTicketPayload, ListTicketPayload, PreparingTicketPayload,
     ReadyForPickupTicketPayload,
 };
 use serde::Deserialize;
@@ -9,14 +15,17 @@ use tracing::instrument;
 use crate::error::ApiError;
 use crate::models::*;
 
-use super::{AppState, verify_restaurant_access};
+use super::{verify_restaurant_access, AppState};
 use ftgo_proto::kitchen_service::Ticket;
 
 // Helper function to convert proto Ticket to our KitchenTicket model
 fn ticket_to_kitchen_ticket(t: Ticket) -> Result<KitchenTicket, ApiError> {
     Ok(KitchenTicket {
         id: t.id.parse().map_err(|_| ApiError::InvalidToken)?,
-        restaurant_id: t.restaurant_id.parse().map_err(|_| ApiError::InvalidToken)?,
+        restaurant_id: t
+            .restaurant_id
+            .parse()
+            .map_err(|_| ApiError::InvalidToken)?,
         order_id: None, // Not available in kitchen service proto
         state: match t.state {
             0 => "CREATE_PENDING".to_string(),
@@ -29,33 +38,49 @@ fn ticket_to_kitchen_ticket(t: Ticket) -> Result<KitchenTicket, ApiError> {
             7 => "CANCELLED".to_string(),
             _ => "UNKNOWN".to_string(),
         },
-        line_items: t.line_items.into_iter().map(|item| TicketLineItem {
-            quantity: item.quantity,
-            menu_item_id: item.menu_item_id,
-            name: item.name,
-        }).collect(),
-        ready_by: t.ready_by.and_then(|ts| 
-            chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)
-        ),
-        accepted_at: t.accept_time.and_then(|ts| 
-            chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)
-        ),
-        preparing_at: t.preparing_time.and_then(|ts| 
-            chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)
-        ),
-        ready_for_pickup_at: t.ready_for_pickup_time.and_then(|ts| 
-            chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)
-        ),
+        line_items: t
+            .line_items
+            .into_iter()
+            .map(|item| TicketLineItem {
+                quantity: item.quantity,
+                menu_item_id: item.menu_item_id,
+                name: item.name,
+            })
+            .collect(),
+        ready_by: t
+            .ready_by
+            .and_then(|ts| chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)),
+        accepted_at: t
+            .accept_time
+            .and_then(|ts| chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)),
+        preparing_at: t
+            .preparing_time
+            .and_then(|ts| chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)),
+        ready_for_pickup_at: t
+            .ready_for_pickup_time
+            .and_then(|ts| chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)),
     })
 }
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/restaurants/:restaurant_id/tickets", get(list_tickets))
-        .route("/restaurants/:restaurant_id/tickets/:ticket_id", get(get_ticket))
-        .route("/restaurants/:restaurant_id/tickets/:ticket_id/accept", post(accept_ticket))
-        .route("/restaurants/:restaurant_id/tickets/:ticket_id/preparing", post(preparing_ticket))
-        .route("/restaurants/:restaurant_id/tickets/:ticket_id/ready", post(ready_for_pickup_ticket))
+        .route("/restaurants/{restaurant_id}/tickets", get(list_tickets))
+        .route(
+            "/restaurants/{restaurant_id}/tickets/{ticket_id}",
+            get(get_ticket),
+        )
+        .route(
+            "/restaurants/{restaurant_id}/tickets/{ticket_id}/accept",
+            post(accept_ticket),
+        )
+        .route(
+            "/restaurants/{restaurant_id}/tickets/{ticket_id}/preparing",
+            post(preparing_ticket),
+        )
+        .route(
+            "/restaurants/{restaurant_id}/tickets/{ticket_id}/ready",
+            post(ready_for_pickup_ticket),
+        )
 }
 
 #[derive(Debug, Deserialize)]
@@ -94,7 +119,7 @@ pub async fn list_tickets(
     Query(query): Query<ListTicketsQuery>,
 ) -> Result<Json<ListTicketsResponse>, ApiError> {
     let mut auth_client = state.auth_client.clone();
-    
+
     // Verify user has access to this restaurant
     verify_restaurant_access(&headers, &mut auth_client, &restaurant_id).await?;
 
@@ -118,7 +143,9 @@ pub async fn list_tickets(
         .edges
         .into_iter()
         .map(|edge| {
-            let t = edge.node.ok_or(ApiError::ServiceUnavailable("Invalid ticket data".to_string()))?;
+            let t = edge.node.ok_or(ApiError::ServiceUnavailable(
+                "Invalid ticket data".to_string(),
+            ))?;
             ticket_to_kitchen_ticket(t)
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -151,7 +178,7 @@ pub async fn get_ticket(
     Path((restaurant_id, ticket_id)): Path<(String, String)>,
 ) -> Result<Json<KitchenTicket>, ApiError> {
     let mut auth_client = state.auth_client.clone();
-    
+
     // Verify user has access to this restaurant
     verify_restaurant_access(&headers, &mut auth_client, &restaurant_id).await?;
 
@@ -159,16 +186,13 @@ pub async fn get_ticket(
 
     let request = tonic::Request::new(GetTicketPayload { ticket_id });
 
-    let response = kitchen_client
-        .get_ticket(request)
-        .await
-        .map_err(|e| {
-            if e.code() == tonic::Code::NotFound {
-                ApiError::ServiceUnavailable("Ticket not found".to_string())
-            } else {
-                ApiError::ServiceUnavailable(format!("Kitchen service error: {e}"))
-            }
-        })?;
+    let response = kitchen_client.get_ticket(request).await.map_err(|e| {
+        if e.code() == tonic::Code::NotFound {
+            ApiError::ServiceUnavailable("Ticket not found".to_string())
+        } else {
+            ApiError::ServiceUnavailable(format!("Kitchen service error: {e}"))
+        }
+    })?;
 
     let ticket = response.into_inner();
     let kitchen_ticket = ticket_to_kitchen_ticket(ticket)?;
@@ -201,27 +225,24 @@ pub async fn accept_ticket(
     Path((restaurant_id, ticket_id)): Path<(String, String)>,
 ) -> Result<Json<KitchenTicket>, ApiError> {
     let mut auth_client = state.auth_client.clone();
-    
+
     // Verify user has access to this restaurant
     verify_restaurant_access(&headers, &mut auth_client, &restaurant_id).await?;
 
     let mut kitchen_client = state.kitchen_client.clone();
 
-    let request = tonic::Request::new(AcceptTicketPayload { 
+    let request = tonic::Request::new(AcceptTicketPayload {
         ticket_id: ticket_id.clone(),
         ready_by: None, // No specific ready_by time for now
     });
 
-    kitchen_client
-        .accept_ticket(request)
-        .await
-        .map_err(|e| {
-            if e.code() == tonic::Code::NotFound {
-                ApiError::ServiceUnavailable("Ticket not found".to_string())
-            } else {
-                ApiError::ServiceUnavailable(format!("Kitchen service error: {e}"))
-            }
-        })?;
+    kitchen_client.accept_ticket(request).await.map_err(|e| {
+        if e.code() == tonic::Code::NotFound {
+            ApiError::ServiceUnavailable("Ticket not found".to_string())
+        } else {
+            ApiError::ServiceUnavailable(format!("Kitchen service error: {e}"))
+        }
+    })?;
 
     // After accepting, fetch the updated ticket
     let get_request = tonic::Request::new(GetTicketPayload { ticket_id });
@@ -261,7 +282,7 @@ pub async fn preparing_ticket(
     Path((restaurant_id, ticket_id)): Path<(String, String)>,
 ) -> Result<Json<KitchenTicket>, ApiError> {
     let mut auth_client = state.auth_client.clone();
-    
+
     // Verify user has access to this restaurant
     verify_restaurant_access(&headers, &mut auth_client, &restaurant_id).await?;
 
@@ -311,7 +332,7 @@ pub async fn ready_for_pickup_ticket(
     Path((restaurant_id, ticket_id)): Path<(String, String)>,
 ) -> Result<Json<KitchenTicket>, ApiError> {
     let mut auth_client = state.auth_client.clone();
-    
+
     // Verify user has access to this restaurant
     verify_restaurant_access(&headers, &mut auth_client, &restaurant_id).await?;
 

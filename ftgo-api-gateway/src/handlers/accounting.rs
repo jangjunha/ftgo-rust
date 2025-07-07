@@ -9,7 +9,7 @@ use super::{AppState, verify_consumer_access};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/consumers/:consumer_id/account", get(get_account))
+        .route("/consumers/{consumer_id}/account", get(get_account))
 }
 
 #[utoipa::path(
