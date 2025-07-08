@@ -228,9 +228,17 @@ pub struct TicketLineItem {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+pub struct KitchenTicketEdge {
+    /// The ticket node
+    pub node: KitchenTicket,
+    /// Cursor for pagination
+    pub cursor: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ListTicketsResponse {
-    /// List of kitchen tickets
-    pub tickets: Vec<KitchenTicket>,
+    /// List of kitchen ticket edges with cursor information
+    pub edges: Vec<KitchenTicketEdge>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]

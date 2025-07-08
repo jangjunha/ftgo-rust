@@ -139,18 +139,22 @@ pub async fn list_tickets(
         .map_err(|e| ApiError::ServiceUnavailable(format!("Kitchen service error: {e}")))?;
 
     let tickets_response = response.into_inner();
-    let tickets = tickets_response
+    let edges = tickets_response
         .edges
         .into_iter()
         .map(|edge| {
             let t = edge.node.ok_or(ApiError::ServiceUnavailable(
                 "Invalid ticket data".to_string(),
             ))?;
-            ticket_to_kitchen_ticket(t)
+            let kitchen_ticket = ticket_to_kitchen_ticket(t)?;
+            Ok(crate::models::KitchenTicketEdge {
+                node: kitchen_ticket,
+                cursor: edge.cursor,
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(Json(ListTicketsResponse { tickets }))
+    Ok(Json(ListTicketsResponse { edges }))
 }
 
 #[utoipa::path(
