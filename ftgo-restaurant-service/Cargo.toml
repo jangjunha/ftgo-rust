@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.5.40", features = ["derive"] }
 bigdecimal = "0.4.7"
 diesel = { version = "2.2.0", features = ["postgres", "numeric", "uuid"] }
 diesel_migrations = "2.2.0"
@@ -29,7 +30,3 @@ tokio = { version = "1.0", features = [
 # rand = "0.8"
 
 ftgo-proto = { path = "../ftgo-proto" }
-
-[[bin]]
-name = "rpc"
-path = "src/bin/rpc.rs"

@@ -6,7 +6,6 @@ services:
       context: .
       args:
         - PACKAGE=ftgo-api-gateway
-        - BINARY=ftgo-api-gateway
     environment:
       - AUTH_SERVICE_ENDPOINT=http://auth-rpc:8199
       - RESTAURANT_SERVICE_ENDPOINT=http://restaurant-rpc:8101
@@ -20,12 +19,12 @@ services:
 
   ### Auth
   auth-rpc:
-    image: ghcr.io/jangjunha/ftgo-rust-auth-rpc:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-auth-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-auth-service
-        - BINARY=rpc
+    command: ["rpc"]
     environment:
       SECRET_KEY: ${SECRET_KEY}
       DATABASE_URL: postgres://postgres@auth-db/auth
@@ -36,12 +35,12 @@ services:
 
   ### Restaurant
   restaurant-rpc:
-    image: ghcr.io/jangjunha/ftgo-rust-restaurant-rpc:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-restaurant-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-restaurant-service
-        - BINARY=rpc
+    command: ["rpc"]
     environment:
       DATABASE_URL: postgres://postgres@restaurant-db/restaurant
       KAFKA_URL: kafka:9094
@@ -51,12 +50,12 @@ services:
       - restaurant-db
 
   restaurant-producer:
-    image: ghcr.io/jangjunha/ftgo-rust-restaurant-producer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-restaurant-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-restaurant-service
-        - BINARY=producer
+    command: ["producer"]
     environment:
       DATABASE_URL: postgres://postgres@restaurant-db/restaurant
       KAFKA_URL: kafka:9094
@@ -65,12 +64,12 @@ services:
 
   ### Consumer
   consumer-rpc:
-    image: ghcr.io/jangjunha/ftgo-rust-consumer-rpc:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-consumer-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-consumer-service
-        - BINARY=rpc
+    command: ["rpc"]
     environment:
       DATABASE_URL: postgres://postgres@consumer-db/consumer
       KAFKA_URL: kafka:9094
@@ -80,12 +79,12 @@ services:
       - consumer-db
 
   consumer-producer:
-    image: ghcr.io/jangjunha/ftgo-rust-consumer-producer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-consumer-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-consumer-service
-        - BINARY=producer
+    command: ["producer"]
     environment:
       DATABASE_URL: postgres://postgres@consumer-db/consumer
       KAFKA_URL: kafka:9094
@@ -93,12 +92,12 @@ services:
       - consumer-db
 
   consumer-consumer:
-    image: ghcr.io/jangjunha/ftgo-rust-consumer-consumer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-consumer-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-consumer-service
-        - BINARY=consumer
+    command: ["consumer"]
     environment:
       DATABASE_URL: postgres://postgres@consumer-db/consumer
       KAFKA_URL: kafka:9094
@@ -107,12 +106,12 @@ services:
 
   ### Order
   order-rpc:
-    image: ghcr.io/jangjunha/ftgo-rust-order-rpc:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-order-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-order-service
-        - BINARY=rpc
+    command: ["rpc"]
     environment:
       DATABASE_URL: postgres://postgres@order-db/order
       KAFKA_URL: kafka:9094
@@ -122,12 +121,12 @@ services:
       - order-db
 
   order-producer:
-    image: ghcr.io/jangjunha/ftgo-rust-order-producer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-order-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-order-service
-        - BINARY=producer
+    command: ["producer"]
     environment:
       DATABASE_URL: postgres://postgres@order-db/order
       KAFKA_URL: kafka:9094
@@ -135,12 +134,12 @@ services:
       - order-db
 
   order-consumer:
-    image: ghcr.io/jangjunha/ftgo-rust-order-consumer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-order-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-order-service
-        - BINARY=consumer
+    command: ["consumer"]
     environment:
       DATABASE_URL: postgres://postgres@order-db/order
       KAFKA_URL: kafka:9094
@@ -149,12 +148,12 @@ services:
 
   ### Kitchen
   kitchen-rpc:
-    image: ghcr.io/jangjunha/ftgo-rust-kitchen-rpc:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-kitchen-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-kitchen-service
-        - BINARY=rpc
+    command: ["rpc"]
     environment:
       DATABASE_URL: postgres://postgres@kitchen-db/kitchen
       KAFKA_URL: kafka:9094
@@ -164,12 +163,12 @@ services:
       - kitchen-db
 
   kitchen-producer:
-    image: ghcr.io/jangjunha/ftgo-rust-kitchen-producer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-kitchen-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-kitchen-service
-        - BINARY=producer
+    command: ["producer"]
     environment:
       DATABASE_URL: postgres://postgres@kitchen-db/kitchen
       KAFKA_URL: kafka:9094
@@ -177,12 +176,12 @@ services:
       - kitchen-db
 
   kitchen-consumer:
-    image: ghcr.io/jangjunha/ftgo-rust-kitchen-consumer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-kitchen-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-kitchen-service
-        - BINARY=consumer
+    command: ["consumer"]
     environment:
       DATABASE_URL: postgres://postgres@kitchen-db/kitchen
       KAFKA_URL: kafka:9094
@@ -191,12 +190,12 @@ services:
 
   ### Delivery
   delivery-rpc:
-    image: ghcr.io/jangjunha/ftgo-rust-delivery-rpc:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-delivery-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-delivery-service
-        - BINARY=rpc
+    command: ["rpc"]
     environment:
       DATABASE_URL: postgres://postgres@delivery-db/delivery
       KAFKA_URL: kafka:9094
@@ -206,12 +205,12 @@ services:
       - delivery-db
 
   delivery-producer:
-    image: ghcr.io/jangjunha/ftgo-rust-delivery-producer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-delivery-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-delivery-service
-        - BINARY=producer
+    command: ["producer"]
     environment:
       DATABASE_URL: postgres://postgres@delivery-db/delivery
       KAFKA_URL: kafka:9094
@@ -219,12 +218,12 @@ services:
       - delivery-db
 
   delivery-consumer:
-    image: ghcr.io/jangjunha/ftgo-rust-delivery-consumer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-delivery-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-delivery-service
-        - BINARY=consumer
+    command: ["consumer"]
     environment:
       DATABASE_URL: postgres://postgres@delivery-db/delivery
       KAFKA_URL: kafka:9094
@@ -233,12 +232,12 @@ services:
 
   ### Accounting
   accounting-rpc:
-    image: ghcr.io/jangjunha/ftgo-rust-accounting-rpc:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-accounting-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-accounting-service
-        - BINARY=rpc
+    command: ["rpc"]
     environment:
       ESDB_URL: esdb://accounting-db:2113?tls=false
       PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
@@ -250,12 +249,12 @@ services:
       - accounting-projection-db
 
   accounting-consumer:
-    image: ghcr.io/jangjunha/ftgo-rust-accounting-consumer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-accounting-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-accounting-service
-        - BINARY=consumer
+    command: ["consumer"]
     environment:
       ESDB_URL: esdb://accounting-db:2113?tls=false
       PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
@@ -265,7 +264,7 @@ services:
       - accounting-projection-db
 
   accounting-projector:
-    image: ghcr.io/jangjunha/ftgo-rust-accounting-projector:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-accounting-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -279,12 +278,12 @@ services:
       - accounting-projection-db
 
   accounting-producer:
-    image: ghcr.io/jangjunha/ftgo-rust-accounting-producer:${IMAGE_TAG:-latest}
+    image: ghcr.io/jangjunha/ftgo-rust-accounting-service:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
         - PACKAGE=ftgo-accounting-service
-        - BINARY=producer
+    command: ["producer"]
     deploy:
       restart_policy:
         condition: on-failure

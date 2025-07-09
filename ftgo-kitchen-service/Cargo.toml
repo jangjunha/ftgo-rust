@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.5.40", features = ["derive"] }
 bigdecimal = "0.4.7"
 chrono = "0.4"
 diesel = { version = "2.2.0", features = [
@@ -31,15 +32,3 @@ tokio = { version = "1.0", features = [
 ] }
 
 ftgo-proto = { path = "../ftgo-proto" }
-
-[[bin]]
-name = "rpc"
-path = "src/bin/rpc.rs"
-
-[[bin]]
-name = "consumer"
-path = "src/bin/consumer.rs"
-
-[[bin]]
-name = "producer"
-path = "src/bin/producer.rs"

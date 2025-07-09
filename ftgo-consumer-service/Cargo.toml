@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.5.40", features = ["derive"] }
 diesel = { version = "2.2.0", features = ["postgres", "numeric", "uuid"] }
 diesel_migrations = "2.2.0"
 dotenvy = "0.15"
@@ -22,15 +23,3 @@ tokio = { version = "1.0", features = [
 kafka = "0.10"
 
 ftgo-proto = { path = "../ftgo-proto" }
-
-[[bin]]
-name = "rpc"
-path = "src/bin/rpc.rs"
-
-[[bin]]
-name = "consumer"
-path = "src/bin/consumer.rs"
-
-[[bin]]
-name = "producer"
-path = "src/bin/producer.rs"

@@ -1,4 +1,4 @@
-fn main() {
+pub fn main() {
     tonic_build::configure()
         .compile_protos(
             &[
