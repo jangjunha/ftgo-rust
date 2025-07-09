@@ -185,14 +185,14 @@ impl OrderService for OrderServiceImpl {
                 return Err(Status::invalid_argument("Invalid cursor format"));
             }
 
-            let after_timestamp = parts[0]
+            let after_timestamp_micros = parts[0]
                 .parse::<i64>()
                 .map_err(|_| Status::invalid_argument("Invalid cursor timestamp"))?;
             let after_order_id = parts[1]
                 .parse::<uuid::Uuid>()
                 .map_err(|_| Status::invalid_argument("Invalid cursor order_id"))?;
 
-            let after_datetime = chrono::DateTime::from_timestamp(after_timestamp, 0)
+            let after_datetime = chrono::DateTime::from_timestamp_micros(after_timestamp_micros)
                 .ok_or_else(|| Status::invalid_argument("Invalid cursor timestamp"))?;
 
             // Use compound cursor for pagination with DESC order: (created_at < after_datetime) OR (created_at = after_datetime AND id < after_order_id)
@@ -222,7 +222,7 @@ impl OrderService for OrderServiceImpl {
 
                 Ok(OrderEdge {
                     node: Some(serialize_order(order.clone(), line_items)),
-                    cursor: format!("{}:{}", order.created_at.timestamp(), order.id),
+                    cursor: format!("{}:{}", order.created_at.timestamp_micros(), order.id),
                 })
             })
             .collect::<Result<Vec<_>, Status>>()?;

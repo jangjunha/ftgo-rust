@@ -237,9 +237,9 @@ pub async fn get_order(
         ("restaurant_id" = Option<String>, Query, description = "Filter by restaurant ID"),
         ("state" = Option<String>, Query, description = "Filter by order state"),
         ("first" = Option<u32>, Query, description = "Number of orders to fetch"),
-        ("after" = Option<String>, Query, description = "Cursor for pagination (format: timestamp:order_id)"),
+        ("after" = Option<String>, Query, description = "Cursor for pagination"),
         ("last" = Option<u32>, Query, description = "Number of orders to fetch from end"),
-        ("before" = Option<String>, Query, description = "Cursor for pagination (format: timestamp:order_id)"),
+        ("before" = Option<String>, Query, description = "Cursor for pagination"),
     ),
     security(
         ("bearer" = [])
