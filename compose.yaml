@@ -16,6 +16,8 @@ services:
       - ACCOUNTING_SERVICE_ENDPOINT=http://accounting-rpc:8104
     ports:
       - 8100:8100
+    profiles:
+      - app
 
   ### Auth
   auth-rpc:
@@ -32,6 +34,8 @@ services:
       - 8199:8199
     depends_on:
       - auth-db
+    profiles:
+      - app
 
   ### Restaurant
   restaurant-rpc:
@@ -48,6 +52,8 @@ services:
       - 8101:8101
     depends_on:
       - restaurant-db
+    profiles:
+      - app
 
   restaurant-producer:
     image: ghcr.io/jangjunha/ftgo-rust-restaurant-service:${IMAGE_TAG:-latest}
@@ -61,6 +67,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - restaurant-db
+    profiles:
+      - app
 
   ### Consumer
   consumer-rpc:
@@ -77,6 +85,8 @@ services:
       - 8102:8102
     depends_on:
       - consumer-db
+    profiles:
+      - app
 
   consumer-producer:
     image: ghcr.io/jangjunha/ftgo-rust-consumer-service:${IMAGE_TAG:-latest}
@@ -90,6 +100,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - consumer-db
+    profiles:
+      - app
 
   consumer-consumer:
     image: ghcr.io/jangjunha/ftgo-rust-consumer-service:${IMAGE_TAG:-latest}
@@ -103,6 +115,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - consumer-db
+    profiles:
+      - app
 
   ### Order
   order-rpc:
@@ -119,6 +133,8 @@ services:
       - 8103:8103
     depends_on:
       - order-db
+    profiles:
+      - app
 
   order-producer:
     image: ghcr.io/jangjunha/ftgo-rust-order-service:${IMAGE_TAG:-latest}
@@ -132,6 +148,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - order-db
+    profiles:
+      - app
 
   order-consumer:
     image: ghcr.io/jangjunha/ftgo-rust-order-service:${IMAGE_TAG:-latest}
@@ -145,6 +163,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - order-db
+    profiles:
+      - app
 
   ### Kitchen
   kitchen-rpc:
@@ -161,6 +181,8 @@ services:
       - 8105:8105
     depends_on:
       - kitchen-db
+    profiles:
+      - app
 
   kitchen-producer:
     image: ghcr.io/jangjunha/ftgo-rust-kitchen-service:${IMAGE_TAG:-latest}
@@ -174,6 +196,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - kitchen-db
+    profiles:
+      - app
 
   kitchen-consumer:
     image: ghcr.io/jangjunha/ftgo-rust-kitchen-service:${IMAGE_TAG:-latest}
@@ -187,6 +211,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - kitchen-db
+    profiles:
+      - app
 
   ### Delivery
   delivery-rpc:
@@ -203,6 +229,8 @@ services:
       - 8108:8108
     depends_on:
       - delivery-db
+    profiles:
+      - app
 
   delivery-producer:
     image: ghcr.io/jangjunha/ftgo-rust-delivery-service:${IMAGE_TAG:-latest}
@@ -216,6 +244,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - delivery-db
+    profiles:
+      - app
 
   delivery-consumer:
     image: ghcr.io/jangjunha/ftgo-rust-delivery-service:${IMAGE_TAG:-latest}
@@ -229,6 +259,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - delivery-db
+    profiles:
+      - app
 
   ### Accounting
   accounting-rpc:
@@ -247,6 +279,8 @@ services:
     depends_on:
       - accounting-db
       - accounting-projection-db
+    profiles:
+      - app
 
   accounting-consumer:
     image: ghcr.io/jangjunha/ftgo-rust-accounting-service:${IMAGE_TAG:-latest}
@@ -262,6 +296,8 @@ services:
     depends_on:
       - accounting-db
       - accounting-projection-db
+    profiles:
+      - app
 
   accounting-projector:
     image: ghcr.io/jangjunha/ftgo-rust-accounting-service:${IMAGE_TAG:-latest}
@@ -276,6 +312,8 @@ services:
     depends_on:
       - accounting-db
       - accounting-projection-db
+    profiles:
+      - app
 
   accounting-producer:
     image: ghcr.io/jangjunha/ftgo-rust-accounting-service:${IMAGE_TAG:-latest}
@@ -293,6 +331,8 @@ services:
       KAFKA_URL: kafka:9094
     depends_on:
       - accounting-db
+    profiles:
+      - app
 
   ### Database
   auth-db:
@@ -305,6 +345,8 @@ services:
       - auth-db-data:/var/lib/postgresql/data
     ports:
       - 8299:5432
+    profiles:
+      - infra
   restaurant-db:
     restart: always
     image: postgres:17-alpine
@@ -315,6 +357,8 @@ services:
       - restaurant-db-data:/var/lib/postgresql/data
     ports:
       - 8201:5432
+    profiles:
+      - infra
   consumer-db:
     restart: always
     image: postgres:17-alpine
@@ -325,6 +369,8 @@ services:
       - consumer-db-data:/var/lib/postgresql/data
     ports:
       - 8202:5432
+    profiles:
+      - infra
   order-db:
     restart: always
     image: postgres:17-alpine
@@ -335,6 +381,8 @@ services:
       - order-db-data:/var/lib/postgresql/data
     ports:
       - 8203:5432
+    profiles:
+      - infra
   kitchen-db:
     restart: always
     image: postgres:17-alpine
@@ -345,6 +393,8 @@ services:
       - kitchen-db-data:/var/lib/postgresql/data
     ports:
       - 8205:5432
+    profiles:
+      - infra
   delivery-db:
     restart: always
     image: postgres:17-alpine
@@ -355,6 +405,8 @@ services:
       - delivery-db-data:/var/lib/postgresql/data
     ports:
       - 8208:5432
+    profiles:
+      - infra
 
   accounting-db:
     image: docker.eventstore.com/eventstore/eventstoredb-ee:24.10
@@ -374,6 +426,8 @@ services:
       - type: volume
         source: accounting-db-logs
         target: /var/log/eventstore
+    profiles:
+      - infra
   accounting-projection-db:
     restart: always
     image: postgres:17-alpine
@@ -384,6 +438,8 @@ services:
       - accounting-projection-db-data:/var/lib/postgresql/data
     ports:
       - 8304:5432
+    profiles:
+      - infra
 
   kafka:
     image: apache/kafka-native:3.9.0
@@ -401,6 +457,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    profiles:
+      - infra
 
   kafka-ui:
     image: ghcr.io/kafbat/kafka-ui:latest
@@ -412,6 +470,8 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9094
     depends_on:
       - kafka
+    profiles:
+      - debug
 
   kafka-init:
     image: apache/kafka
@@ -453,6 +513,8 @@ services:
       /opt/kafka/bin/kafka-topics.sh --create --topic "order.reply" \\
         --bootstrap-server kafka:9094 --if-not-exists;
       "
+    profiles:
+      - infra
 
 volumes:
   auth-db-data: {}
