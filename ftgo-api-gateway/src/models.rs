@@ -170,6 +170,20 @@ pub struct CreateOrderResponse {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+pub struct OrderEdge {
+    /// The order node
+    pub node: CreateOrderResponse,
+    /// Cursor for pagination
+    pub cursor: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ListOrdersResponse {
+    /// List of order edges with cursor information
+    pub edges: Vec<OrderEdge>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct OrderLineItem {
     /// Quantity of this item
     pub quantity: i32,

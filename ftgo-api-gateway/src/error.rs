@@ -7,6 +7,8 @@ pub enum ApiError {
     AuthenticationFailed,
     #[error("Invalid token")]
     InvalidToken,
+    #[error("Access forbidden")]
+    Forbidden,
     #[error("Service unavailable: {0}")]
     ServiceUnavailable(String),
 }
@@ -19,6 +21,7 @@ impl axum::response::IntoResponse for ApiError {
                 "Authentication failed".to_string(),
             ),
             ApiError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token".to_string()),
+            ApiError::Forbidden => (StatusCode::FORBIDDEN, "Access forbidden".to_string()),
             ApiError::ServiceUnavailable(msg) => (StatusCode::SERVICE_UNAVAILABLE, msg.clone()),
         };
 

@@ -181,6 +181,7 @@ async fn verify_order_access(
         restaurant::get_restaurant,
         order::create_order,
         order::get_order,
+        order::list_orders,
         kitchen::list_tickets,
         kitchen::get_ticket,
         kitchen::accept_ticket,

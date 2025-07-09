@@ -82,7 +82,7 @@ impl From<OrderState> for ftgo_proto::order_service::OrderState {
     }
 }
 
-#[derive(Queryable, Selectable, Identifiable, Insertable, Debug, PartialEq)]
+#[derive(Queryable, Selectable, Identifiable, Insertable, Debug, PartialEq, Clone)]
 #[diesel(table_name = orders)]
 pub struct Order {
     pub id: Uuid,
@@ -93,6 +93,7 @@ pub struct Order {
     pub delivery_time: DateTime<Utc>,
     pub delivery_address: String,
     pub payment_token: Option<String>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(

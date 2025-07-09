@@ -7,8 +7,8 @@ use ftgo_order_service::saga::create_order::{CreateOrderSaga, CreateOrderSagaSta
 use ftgo_order_service::saga::SagaManager;
 use ftgo_proto::common::Money;
 use ftgo_proto::order_service::{
-    CreateOrderPayload, DeliveryInformation, GetOrderPayload, Order, OrderLineItem, OrderState,
-    PaymentInformation,
+    CreateOrderPayload, DeliveryInformation, GetOrderPayload, ListOrderPayload, ListOrderResponse,
+    Order, OrderEdge, OrderLineItem, OrderState, PaymentInformation,
 };
 use prost_types::Timestamp;
 use tonic::transport::Server;
@@ -93,6 +93,7 @@ impl OrderService for OrderServiceImpl {
             delivery_time: Utc::now() + Duration::minutes(60),
             delivery_address: payload.delivery_address.clone(),
             payment_token: None,
+            created_at: Utc::now(),
         };
         let line_items = payload
             .items
@@ -143,6 +144,73 @@ impl OrderService for OrderServiceImpl {
             println!("Transaction failed with error: {:?}", e);
             Status::internal("Internal server error")
         })
+    }
+
+    async fn list_order(
+        &self,
+        request: Request<ListOrderPayload>,
+    ) -> Result<Response<ListOrderResponse>, Status> {
+        let payload = request.into_inner();
+        let conn = &mut establish_connection();
+
+        let mut query = schema::orders::table
+            .select(models::Order::as_select())
+            .into_boxed();
+
+        if let Some(consumer_id) = payload.consumer_id {
+            let cid: Uuid = consumer_id
+                .parse()
+                .map_err(|_| Status::invalid_argument("Invalid consumer id"))?;
+            query = query.filter(schema::orders::consumer_id.eq(cid));
+        }
+
+        if let Some(restaurant_id) = payload.restaurant_id {
+            let rid: Uuid = restaurant_id
+                .parse()
+                .map_err(|_| Status::invalid_argument("Invalid restaurant id"))?;
+            query = query.filter(schema::orders::restaurant_id.eq(rid));
+        }
+
+        if let Some(state) = payload.state {
+            let order_state = models::OrderState::from(OrderState::try_from(state).unwrap());
+            query = query.filter(schema::orders::state.eq(order_state));
+        }
+
+        let limit = payload.first.unwrap_or(10).min(100) as i64;
+
+        if let Some(after) = payload.after {
+            // Parse cursor as a timestamp
+            let after_timestamp = after
+                .parse::<i64>()
+                .map_err(|_| Status::invalid_argument("Invalid cursor"))?;
+            let after_datetime = chrono::DateTime::from_timestamp(after_timestamp, 0)
+                .ok_or_else(|| Status::invalid_argument("Invalid cursor timestamp"))?;
+            query = query.filter(schema::orders::created_at.gt(after_datetime));
+        }
+
+        let orders = query
+            .order(schema::orders::created_at.asc())
+            .limit(limit)
+            .get_results::<models::Order>(conn)
+            .map_err(|_| Status::internal("Internal server error"))?;
+
+        let edges = orders
+            .into_iter()
+            .map(|order| {
+                let line_items = schema::order_line_items::table
+                    .select(models::OrderLineItem::as_select())
+                    .filter(schema::order_line_items::order_id.eq(&order.id))
+                    .get_results(conn)
+                    .map_err(|_| Status::internal("Internal server error"))?;
+
+                Ok(OrderEdge {
+                    node: Some(serialize_order(order.clone(), line_items)),
+                    cursor: order.created_at.timestamp().to_string(),
+                })
+            })
+            .collect::<Result<Vec<_>, Status>>()?;
+
+        Ok(Response::new(ListOrderResponse { edges }))
     }
 }
 

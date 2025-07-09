@@ -30,6 +30,7 @@ diesel::table! {
         delivery_time -> Timestamptz,
         delivery_address -> Text,
         payment_token -> Nullable<Text>,
+        created_at -> Timestamptz,
     }
 }
 

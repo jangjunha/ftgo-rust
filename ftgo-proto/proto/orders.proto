@@ -11,6 +11,7 @@ import "money.proto";
 service OrderService {
   rpc GetOrder(GetOrderPayload) returns (Order) {}
   rpc CreateOrder(CreateOrderPayload) returns (Order) {}
+  rpc ListOrder(ListOrderPayload) returns (ListOrderResponse) {}
 }
 
 message GetOrderPayload {
@@ -22,6 +23,25 @@ message CreateOrderPayload {
   string consumerId = 2;
   repeated MenuItemIdAndQuantity items = 3;
   string deliveryAddress = 4;
+}
+
+message ListOrderPayload {
+  optional string consumerId = 1;
+  optional string restaurantId = 2;
+  optional OrderState state = 3;
+  optional uint32 first = 4;
+  optional string after = 5;
+  optional uint32 last = 6;
+  optional string before = 7;
+}
+
+message OrderEdge {
+  Order node = 1;
+  string cursor = 2;
+}
+
+message ListOrderResponse {
+  repeated OrderEdge edges = 1;
 }
 
 enum OrderState {
