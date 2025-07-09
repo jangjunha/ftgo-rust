@@ -1,7 +1,7 @@
 services:
   ### API Gateway
   api-gateway:
-    image: ftgo-api-gateway
+    image: ghcr.io/jangjunha/ftgo-rust-api-gateway:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -20,7 +20,7 @@ services:
 
   ### Auth
   auth-rpc:
-    image: ftgo-auth-rpc
+    image: ghcr.io/jangjunha/ftgo-rust-auth-rpc:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -36,7 +36,7 @@ services:
 
   ### Restaurant
   restaurant-rpc:
-    image: ftgo-restaurant-rpc
+    image: ghcr.io/jangjunha/ftgo-rust-restaurant-rpc:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -51,7 +51,7 @@ services:
       - restaurant-db
 
   restaurant-producer:
-    image: ftgo-restaurant-producer
+    image: ghcr.io/jangjunha/ftgo-rust-restaurant-producer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -65,7 +65,7 @@ services:
 
   ### Consumer
   consumer-rpc:
-    image: ftgo-consumer-rpc
+    image: ghcr.io/jangjunha/ftgo-rust-consumer-rpc:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -80,7 +80,7 @@ services:
       - consumer-db
 
   consumer-producer:
-    image: ftgo-consumer-producer
+    image: ghcr.io/jangjunha/ftgo-rust-consumer-producer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -93,7 +93,7 @@ services:
       - consumer-db
 
   consumer-consumer:
-    image: ftgo-consumer-consumer
+    image: ghcr.io/jangjunha/ftgo-rust-consumer-consumer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -107,7 +107,7 @@ services:
 
   ### Order
   order-rpc:
-    image: ftgo-order-rpc
+    image: ghcr.io/jangjunha/ftgo-rust-order-rpc:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -122,7 +122,7 @@ services:
       - order-db
 
   order-producer:
-    image: ftgo-order-producer
+    image: ghcr.io/jangjunha/ftgo-rust-order-producer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -135,7 +135,7 @@ services:
       - order-db
 
   order-consumer:
-    image: ftgo-order-consumer
+    image: ghcr.io/jangjunha/ftgo-rust-order-consumer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -149,7 +149,7 @@ services:
 
   ### Kitchen
   kitchen-rpc:
-    image: ftgo-kitchen-rpc
+    image: ghcr.io/jangjunha/ftgo-rust-kitchen-rpc:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -164,7 +164,7 @@ services:
       - kitchen-db
 
   kitchen-producer:
-    image: ftgo-kitchen-producer
+    image: ghcr.io/jangjunha/ftgo-rust-kitchen-producer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -177,7 +177,7 @@ services:
       - kitchen-db
 
   kitchen-consumer:
-    image: ftgo-kitchen-consumer
+    image: ghcr.io/jangjunha/ftgo-rust-kitchen-consumer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -191,7 +191,7 @@ services:
 
   ### Delivery
   delivery-rpc:
-    image: ftgo-delivery-rpc
+    image: ghcr.io/jangjunha/ftgo-rust-delivery-rpc:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -206,7 +206,7 @@ services:
       - delivery-db
 
   delivery-producer:
-    image: ftgo-delivery-producer
+    image: ghcr.io/jangjunha/ftgo-rust-delivery-producer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -219,7 +219,7 @@ services:
       - delivery-db
 
   delivery-consumer:
-    image: ftgo-delivery-consumer
+    image: ghcr.io/jangjunha/ftgo-rust-delivery-consumer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -233,7 +233,7 @@ services:
 
   ### Accounting
   accounting-rpc:
-    image: ftgo-accounting-rpc
+    image: ghcr.io/jangjunha/ftgo-rust-accounting-rpc:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -250,7 +250,7 @@ services:
       - accounting-projection-db
 
   accounting-consumer:
-    image: ftgo-accounting-consumer
+    image: ghcr.io/jangjunha/ftgo-rust-accounting-consumer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -265,7 +265,7 @@ services:
       - accounting-projection-db
 
   accounting-projector:
-    image: ftgo-accounting-projector
+    image: ghcr.io/jangjunha/ftgo-rust-accounting-projector:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
@@ -279,7 +279,7 @@ services:
       - accounting-projection-db
 
   accounting-producer:
-    image: ftgo-accounting-producer
+    image: ghcr.io/jangjunha/ftgo-rust-accounting-producer:${IMAGE_TAG:-latest}
     build:
       context: .
       args:
