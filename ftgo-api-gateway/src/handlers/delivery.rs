@@ -5,9 +5,12 @@ use axum::{
     response::Json,
     routing::{get, post, put},
 };
-use ftgo_proto::delivery_service::{
-    DropoffDeliveryPayload, GetCourierPayload, GetDeliveryStatusPayload, PickupDeliveryPayload,
-    UpdateCourierAvailabilityPayload,
+use ftgo_proto::{
+    auth_service::GrantCourierToUserPayload,
+    delivery_service::{
+        DropoffDeliveryPayload, GetCourierPayload, GetDeliveryStatusPayload, PickupDeliveryPayload,
+        UpdateCourierAvailabilityPayload,
+    },
 };
 use tracing::instrument;
 
@@ -144,7 +147,7 @@ pub async fn create_courier(
     headers: HeaderMap,
 ) -> Result<Json<CreateCourierResponse>, ApiError> {
     let mut auth_client = state.auth_client.clone();
-    let _user_id = extract_user_id_from_token(&headers, &mut auth_client).await?;
+    let user_id = extract_user_id_from_token(&headers, &mut auth_client).await?;
 
     let mut delivery_client = state.delivery_client.clone();
 
@@ -159,9 +162,16 @@ pub async fn create_courier(
     let courier = response.into_inner();
     let courier_id = courier.id.clone();
 
-    // Grant courier access to the user (we'd need to add this to auth service)
-    // For now, we'll skip this step as it would require extending the auth service
-    // In a real system: auth_client.grant_courier_to_user(user_id, courier_id).await?;
+    // Grant courier access to the user
+    let grant_request = tonic::Request::new(GrantCourierToUserPayload {
+        user_id,
+        courier_id: courier_id.clone(),
+    });
+
+    auth_client
+        .grant_courier_to_user(grant_request)
+        .await
+        .map_err(|e| ApiError::ServiceUnavailable(format!("Auth service error: {e}")))?;
 
     Ok(Json(CreateCourierResponse {
         courier_id: courier_id.parse().map_err(|_| ApiError::InvalidToken)?,
