@@ -179,17 +179,34 @@ impl OrderService for OrderServiceImpl {
         let limit = payload.first.unwrap_or(10).min(100) as i64;
 
         if let Some(after) = payload.after {
-            // Parse cursor as a timestamp
-            let after_timestamp = after
+            // Parse cursor as "timestamp:order_id"
+            let parts: Vec<&str> = after.split(':').collect();
+            if parts.len() != 2 {
+                return Err(Status::invalid_argument("Invalid cursor format"));
+            }
+
+            let after_timestamp = parts[0]
                 .parse::<i64>()
-                .map_err(|_| Status::invalid_argument("Invalid cursor"))?;
+                .map_err(|_| Status::invalid_argument("Invalid cursor timestamp"))?;
+            let after_order_id = parts[1]
+                .parse::<uuid::Uuid>()
+                .map_err(|_| Status::invalid_argument("Invalid cursor order_id"))?;
+
             let after_datetime = chrono::DateTime::from_timestamp(after_timestamp, 0)
                 .ok_or_else(|| Status::invalid_argument("Invalid cursor timestamp"))?;
-            query = query.filter(schema::orders::created_at.gt(after_datetime));
+
+            // Use compound cursor for pagination with DESC order: (created_at < after_datetime) OR (created_at = after_datetime AND id < after_order_id)
+            query = query.filter(
+                schema::orders::created_at
+                    .lt(after_datetime)
+                    .or(schema::orders::created_at
+                        .eq(after_datetime)
+                        .and(schema::orders::id.gt(after_order_id))),
+            );
         }
 
         let orders = query
-            .order(schema::orders::created_at.asc())
+            .order((schema::orders::created_at.desc(), schema::orders::id.asc()))
             .limit(limit)
             .get_results::<models::Order>(conn)
             .map_err(|_| Status::internal("Internal server error"))?;
@@ -205,7 +222,7 @@ impl OrderService for OrderServiceImpl {
 
                 Ok(OrderEdge {
                     node: Some(serialize_order(order.clone(), line_items)),
-                    cursor: order.created_at.timestamp().to_string(),
+                    cursor: format!("{}:{}", order.created_at.timestamp(), order.id),
                 })
             })
             .collect::<Result<Vec<_>, Status>>()?;

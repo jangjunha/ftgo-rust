@@ -228,7 +228,7 @@ pub async fn get_order(
     get,
     path = "/orders",
     responses(
-        (status = 200, description = "List of orders", body = ListOrdersResponse),
+        (status = 200, description = "List of orders sorted by creation time (newest first)", body = ListOrdersResponse),
         (status = 401, description = "Unauthorized", body = ApiErrorResponse),
         (status = 503, description = "Service unavailable", body = ApiErrorResponse),
     ),
@@ -237,9 +237,9 @@ pub async fn get_order(
         ("restaurant_id" = Option<String>, Query, description = "Filter by restaurant ID"),
         ("state" = Option<String>, Query, description = "Filter by order state"),
         ("first" = Option<u32>, Query, description = "Number of orders to fetch"),
-        ("after" = Option<String>, Query, description = "Cursor for pagination"),
+        ("after" = Option<String>, Query, description = "Cursor for pagination (format: timestamp:order_id)"),
         ("last" = Option<u32>, Query, description = "Number of orders to fetch from end"),
-        ("before" = Option<String>, Query, description = "Cursor for pagination"),
+        ("before" = Option<String>, Query, description = "Cursor for pagination (format: timestamp:order_id)"),
     ),
     security(
         ("bearer" = [])
