@@ -17,6 +17,7 @@ services:
     ports:
       - 8100:8100
     profiles:
+      - ""
       - app
 
   ### Auth
@@ -35,6 +36,7 @@ services:
     depends_on:
       - auth-db
     profiles:
+      - ""
       - app
 
   ### Restaurant
@@ -53,6 +55,7 @@ services:
     depends_on:
       - restaurant-db
     profiles:
+      - ""
       - app
 
   restaurant-producer:
@@ -68,6 +71,7 @@ services:
     depends_on:
       - restaurant-db
     profiles:
+      - ""
       - app
 
   ### Consumer
@@ -86,6 +90,7 @@ services:
     depends_on:
       - consumer-db
     profiles:
+      - ""
       - app
 
   consumer-producer:
@@ -101,6 +106,7 @@ services:
     depends_on:
       - consumer-db
     profiles:
+      - ""
       - app
 
   consumer-consumer:
@@ -116,6 +122,7 @@ services:
     depends_on:
       - consumer-db
     profiles:
+      - ""
       - app
 
   ### Order
@@ -134,6 +141,7 @@ services:
     depends_on:
       - order-db
     profiles:
+      - ""
       - app
 
   order-producer:
@@ -149,6 +157,7 @@ services:
     depends_on:
       - order-db
     profiles:
+      - ""
       - app
 
   order-consumer:
@@ -164,6 +173,7 @@ services:
     depends_on:
       - order-db
     profiles:
+      - ""
       - app
 
   ### Kitchen
@@ -182,6 +192,7 @@ services:
     depends_on:
       - kitchen-db
     profiles:
+      - ""
       - app
 
   kitchen-producer:
@@ -197,6 +208,7 @@ services:
     depends_on:
       - kitchen-db
     profiles:
+      - ""
       - app
 
   kitchen-consumer:
@@ -212,6 +224,7 @@ services:
     depends_on:
       - kitchen-db
     profiles:
+      - ""
       - app
 
   ### Delivery
@@ -230,6 +243,7 @@ services:
     depends_on:
       - delivery-db
     profiles:
+      - ""
       - app
 
   delivery-producer:
@@ -245,6 +259,7 @@ services:
     depends_on:
       - delivery-db
     profiles:
+      - ""
       - app
 
   delivery-consumer:
@@ -260,6 +275,7 @@ services:
     depends_on:
       - delivery-db
     profiles:
+      - ""
       - app
 
   ### Accounting
@@ -280,6 +296,7 @@ services:
       - accounting-db
       - accounting-projection-db
     profiles:
+      - ""
       - app
 
   accounting-consumer:
@@ -297,6 +314,7 @@ services:
       - accounting-db
       - accounting-projection-db
     profiles:
+      - ""
       - app
 
   accounting-projector:
@@ -313,6 +331,7 @@ services:
       - accounting-db
       - accounting-projection-db
     profiles:
+      - ""
       - app
 
   accounting-producer:
@@ -332,6 +351,7 @@ services:
     depends_on:
       - accounting-db
     profiles:
+      - ""
       - app
 
   ### Database
@@ -346,6 +366,7 @@ services:
     ports:
       - 8299:5432
     profiles:
+      - ""
       - infra
   restaurant-db:
     restart: always
@@ -358,6 +379,7 @@ services:
     ports:
       - 8201:5432
     profiles:
+      - ""
       - infra
   consumer-db:
     restart: always
@@ -370,6 +392,7 @@ services:
     ports:
       - 8202:5432
     profiles:
+      - ""
       - infra
   order-db:
     restart: always
@@ -382,6 +405,7 @@ services:
     ports:
       - 8203:5432
     profiles:
+      - ""
       - infra
   kitchen-db:
     restart: always
@@ -394,6 +418,7 @@ services:
     ports:
       - 8205:5432
     profiles:
+      - ""
       - infra
   delivery-db:
     restart: always
@@ -406,6 +431,7 @@ services:
     ports:
       - 8208:5432
     profiles:
+      - ""
       - infra
 
   accounting-db:
@@ -427,6 +453,7 @@ services:
         source: accounting-db-logs
         target: /var/log/eventstore
     profiles:
+      - ""
       - infra
   accounting-projection-db:
     restart: always
@@ -439,6 +466,7 @@ services:
     ports:
       - 8304:5432
     profiles:
+      - ""
       - infra
 
   kafka:
@@ -458,6 +486,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     profiles:
+      - ""
       - infra
 
   kafka-ui:
@@ -514,6 +543,7 @@ services:
         --bootstrap-server kafka:9094 --if-not-exists;
       "
     profiles:
+      - ""
       - infra
 
 volumes:
