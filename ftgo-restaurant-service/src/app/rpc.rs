@@ -28,8 +28,8 @@ impl RestaurantService for RestaurantServiceImpl {
         &self,
         request: Request<CreateRestaurantPayload>,
     ) -> Result<Response<CreateRestaurantResponse>, Status> {
-        use crate::schema::restaurant_menu_items::dsl::*;
-        use crate::schema::restaurants::dsl::*;
+        use ftgo_restaurant_service::schema::restaurant_menu_items::dsl::*;
+        use ftgo_restaurant_service::schema::restaurants::dsl::*;
 
         let payload = request.into_inner();
         let restaurant = models::Restaurant {
