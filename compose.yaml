@@ -323,7 +323,7 @@ services:
       context: .
       args:
         - PACKAGE=ftgo-accounting-service
-        - BINARY=projector
+    command: ["projector"]
     environment:
       ESDB_URL: esdb://accounting-db:2113?tls=false
       PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
