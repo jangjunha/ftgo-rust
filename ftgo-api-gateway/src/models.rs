@@ -283,6 +283,22 @@ pub struct AccountDetailsResponse {
     pub balance: String,
 }
 
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct DepositAccountRequest {
+    /// Amount to deposit
+    pub amount: String,
+    /// Optional description for the transaction
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct WithdrawAccountRequest {
+    /// Amount to withdraw
+    pub amount: String,
+    /// Optional description for the transaction
+    pub description: Option<String>,
+}
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CreateCourierResponse {
     /// Unique identifier for the courier

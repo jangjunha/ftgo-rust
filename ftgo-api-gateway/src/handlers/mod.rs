@@ -195,6 +195,8 @@ async fn verify_order_access(
         delivery::pickup_delivery,
         delivery::dropoff_delivery,
         accounting::get_account,
+        accounting::deposit_account,
+        accounting::withdraw_account,
     ),
     components(
         schemas(
@@ -222,6 +224,8 @@ async fn verify_order_access(
             crate::models::ListTicketsResponse,
             crate::models::DeliveryStatusResponse,
             crate::models::AccountDetailsResponse,
+            crate::models::DepositAccountRequest,
+            crate::models::WithdrawAccountRequest,
             crate::models::CreateCourierResponse,
             crate::models::CourierDetailsResponse,
             crate::models::UpdateCourierAvailabilityRequest,
@@ -239,7 +243,7 @@ async fn verify_order_access(
         (name = "orders", description = "Order management endpoints"),
         (name = "kitchen", description = "Kitchen management endpoints"),
         (name = "delivery", description = "Delivery tracking endpoints"),
-        (name = "accounting", description = "Account balance endpoints")
+        (name = "accounting", description = "Account balance and transaction endpoints")
     ),
     info(
         title = "FTGO API Gateway",

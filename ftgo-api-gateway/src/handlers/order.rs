@@ -5,7 +5,9 @@ use axum::{
     response::Json,
     routing::{get, post},
 };
-use ftgo_proto::order_service::{CreateOrderPayload, GetOrderPayload, ListOrderPayload, MenuItemIdAndQuantity};
+use ftgo_proto::order_service::{
+    CreateOrderPayload, GetOrderPayload, ListOrderPayload, MenuItemIdAndQuantity,
+};
 use serde::Deserialize;
 use tracing::instrument;
 
@@ -251,29 +253,29 @@ pub async fn list_orders(
     Query(query): Query<ListOrdersQuery>,
 ) -> Result<Json<ListOrdersResponse>, ApiError> {
     let mut auth_client = state.auth_client.clone();
-    
+
     // Extract user ID from token
     let user_id = extract_user_id_from_token(&headers, &mut auth_client).await?;
-    
+
     // Get user profile to check permissions
     let user_profile_request = tonic::Request::new(ftgo_proto::auth_service::GetUserPayload {
         id: user_id.clone(),
     });
-    
+
     let user_profile_response = auth_client
         .get_user(user_profile_request)
         .await
         .map_err(|e| ApiError::ServiceUnavailable(format!("Auth service error: {e}")))?;
-    
+
     let user_profile = user_profile_response.into_inner();
-    
+
     let mut order_client = state.order_client.clone();
-    
+
     // Parse order state if provided
     let order_state = if let Some(state_str) = query.state {
         Some(match state_str.as_str() {
             "APPROVAL_PENDING" => 0,
-            "APPROVED" => 1, 
+            "APPROVED" => 1,
             "REJECTED" => 2,
             "CANCEL_PENDING" => 3,
             "CANCELLED" => 4,
@@ -283,20 +285,20 @@ pub async fn list_orders(
     } else {
         None
     };
-    
+
     // If specific consumer_id or restaurant_id is requested, verify access
     if let Some(consumer_id) = &query.consumer_id {
         if !user_profile.granted_consumers.contains(consumer_id) {
             return Err(ApiError::Forbidden);
         }
     }
-    
+
     if let Some(restaurant_id) = &query.restaurant_id {
         if !user_profile.granted_restaurants.contains(restaurant_id) {
             return Err(ApiError::Forbidden);
         }
     }
-    
+
     // Build the request payload
     let request = tonic::Request::new(ListOrderPayload {
         consumer_id: query.consumer_id.clone(),
@@ -307,25 +309,27 @@ pub async fn list_orders(
         last: query.last,
         before: query.before.clone(),
     });
-    
+
     let response = order_client
         .list_order(request)
         .await
         .map_err(|e| ApiError::ServiceUnavailable(format!("Order service error: {e}")))?;
-    
+
     let orders_response = response.into_inner();
-    
+
     // Filter orders based on user permissions
     let filtered_edges: Vec<_> = orders_response
         .edges
         .into_iter()
         .filter_map(|edge| {
             let order = edge.node.as_ref()?;
-            
+
             // Check if user has access to this order (consumer or restaurant)
             let has_consumer_access = user_profile.granted_consumers.contains(&order.consumer_id);
-            let has_restaurant_access = user_profile.granted_restaurants.contains(&order.restaurant_id);
-            
+            let has_restaurant_access = user_profile
+                .granted_restaurants
+                .contains(&order.restaurant_id);
+
             if has_consumer_access || has_restaurant_access {
                 Some(edge)
             } else {
@@ -333,13 +337,13 @@ pub async fn list_orders(
             }
         })
         .collect();
-    
+
     // Convert to API response format
     let edges = filtered_edges
         .into_iter()
         .map(|edge| -> Result<crate::models::OrderEdge, ApiError> {
             let order = edge.node.unwrap();
-            
+
             // Convert the OrderState enum to string
             let state_str = match order.state {
                 0 => "APPROVAL_PENDING",
@@ -350,7 +354,7 @@ pub async fn list_orders(
                 5 => "REVISION_PENDING",
                 _ => "UNKNOWN",
             };
-            
+
             Ok(crate::models::OrderEdge {
                 node: CreateOrderResponse {
                     id: order.id.parse().map_err(|_| ApiError::InvalidToken)?,
@@ -378,7 +382,9 @@ pub async fn list_orders(
                             .delivery_information
                             .as_ref()
                             .and_then(|di| di.delivery_time.as_ref())
-                            .and_then(|ts| chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)),
+                            .and_then(|ts| {
+                                chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)
+                            }),
                         delivery_address: order
                             .delivery_information
                             .map(|di| di.delivery_address)
@@ -390,6 +396,6 @@ pub async fn list_orders(
             })
         })
         .collect::<Result<Vec<_>, _>>()?;
-    
+
     Ok(Json(ListOrdersResponse { edges }))
 }
