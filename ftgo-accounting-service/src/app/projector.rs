@@ -1,83 +1,70 @@
-use diesel_async::{async_connection_wrapper::AsyncConnectionWrapper, AsyncPgConnection};
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use eventstore::{Position, StreamPosition, SubscribeToAllOptions, SubscriptionFilter};
+use std::time::Duration;
+
+use diesel_async::AsyncPgConnection;
 use ftgo_accounting_service::{
-    establish_esdb_client,
+    establish_connection,
     projection::{
         account_details::AccountDetailsProjection, account_infos::AccountInfosProjection,
-        establish_connection, AccountingProjection,
+        AccountingProjection,
     },
     store::checkpoint::CheckpointStore,
 };
 use ftgo_proto::accounting_service::AccountingEvent;
+use futures::TryStreamExt;
+use kafka::producer::AsBytes;
 use prost::Message;
 
-const SUBSCRIPTION_ID: &'static str = "default";
+const SUBSCRIPTION_ID: &'static str = "projector";
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+struct Projector<'a> {
+    store: CheckpointStore<'a>,
+    conn: &'a mut AsyncPgConnection,
+}
+
+impl<'a> Projector<'a> {
+    async fn process_once(&mut self) -> Result<usize, Box<dyn std::error::Error>> {
+        let mut processed = 0;
+        let mut stream = self.store.retrieve_events_after_checkpoint().await?;
+        while let Some(event_row) = stream.try_next().await? {
+            if event_row.stream_name.starts_with("Account-") {
+                let event = AccountingEvent::decode(event_row.payload.as_bytes())
+                    .expect("Failed to decode accounting event");
+
+                AccountDetailsProjection::new(self.conn)
+                    .process(&event, event_row.sequence)
+                    .await
+                    .expect("Failed to process while AccountDetails projection");
+                AccountInfosProjection::new(self.conn)
+                    .process(&event, event_row.sequence)
+                    .await
+                    .expect("Failed to process while AccountInfosProjection projection");
+
+                self.store
+                    .store(&event_row.stream_name, event_row.sequence)
+                    .await?;
+            }
+            processed += 1;
+        }
+        Ok(processed)
+    }
+
+    pub async fn main(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        loop {
+            match self.process_once().await? {
+                0 => tokio::time::sleep(Duration::from_secs(1)).await,
+                _ => {}
+            };
+        }
+    }
+}
 
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = establish_connection().await;
-    let mut async_wrapper: AsyncConnectionWrapper<AsyncPgConnection> =
-        AsyncConnectionWrapper::from(conn);
-    tokio::task::spawn_blocking(move || {
-        async_wrapper.run_pending_migrations(MIGRATIONS).unwrap();
-    })
-    .await
-    .expect("Error while run migration");
-
-    let mut conn = establish_connection().await;
-    let client = establish_esdb_client();
-    let store = CheckpointStore::default();
-
-    let checkpoint = store
-        .load(SUBSCRIPTION_ID)
-        .await
-        .expect("Cannot retrieve checkpoint");
-
-    let mut options = SubscribeToAllOptions::default()
-        .filter(SubscriptionFilter::on_event_type().regex("^[^\\$].*"));
-    if let Some(position) = checkpoint {
-        options = options.position(StreamPosition::Position(Position {
-            commit: position,
-            prepare: position,
-        }));
+    let conn = &mut establish_connection().await;
+    let mut projection_conn = establish_connection().await;
+    let store = CheckpointStore::new(SUBSCRIPTION_ID, conn);
+    let mut projector = Projector {
+        store,
+        conn: &mut projection_conn,
     };
-
-    let mut subscription = client.subscribe_to_all(&options).await;
-    while let Ok(resolved_event) = subscription.next().await {
-        let recorded_event = resolved_event.get_original_event();
-        if recorded_event.data.is_empty() {
-            continue;
-        }
-        if recorded_event.event_type == "CheckpointStored" {
-            continue;
-        }
-
-        let event = AccountingEvent::decode(recorded_event.data.clone())
-            .expect("Failed to decode accounting event");
-
-        AccountDetailsProjection::new(&mut conn)
-            .process(
-                &event,
-                recorded_event.revision.try_into().unwrap(),
-                recorded_event.position.commit.try_into().unwrap(),
-            )
-            .await
-            .expect("Failed to process while AccountDetails projection");
-        AccountInfosProjection::new(&mut conn)
-            .process(
-                &event,
-                recorded_event.revision.try_into().unwrap(),
-                recorded_event.position.commit.try_into().unwrap(),
-            )
-            .await
-            .expect("Failed to process while AccountInfosProjection projection");
-
-        store
-            .store(SUBSCRIPTION_ID, recorded_event.position.commit)
-            .await
-            .unwrap();
-    }
-    Ok(())
+    projector.main().await
 }

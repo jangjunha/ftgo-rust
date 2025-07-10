@@ -1,6 +1,8 @@
 use bigdecimal::BigDecimal;
+use diesel_async::{async_connection_wrapper::AsyncConnectionWrapper, AsyncPgConnection};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use ftgo_accounting_service::{
-    projection::establish_connection, service::AccountingService, store::AccountStore,
+    aggregate::account::AccountStore, establish_connection, service::AccountingService,
 };
 use ftgo_proto::{
     accounting_service::{
@@ -17,6 +19,8 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+
 #[derive(Default)]
 struct AccountingServiceImpl {}
 
@@ -30,9 +34,10 @@ impl AccountingServiceBase for AccountingServiceImpl {
         let account_id = Uuid::from_str(&payload.account_id)
             .map_err(|_| Status::invalid_argument("Invalid account_id"))?;
 
-        let store = AccountStore::default();
         let conn = &mut establish_connection().await;
-        let mut service = AccountingService::new(store, conn);
+        let projection_conn = &mut establish_connection().await;
+        let store = AccountStore::new(conn);
+        let mut service = AccountingService::new(store, projection_conn);
 
         let account = service
             .get_account(&account_id)
@@ -63,9 +68,10 @@ impl AccountingServiceBase for AccountingServiceImpl {
             .parse::<BigDecimal>()
             .map_err(|_| Status::invalid_argument("Invalid amount"))?;
 
-        let store = AccountStore::default();
         let conn = &mut establish_connection().await;
-        let service = AccountingService::new(store, conn);
+        let projection_conn = &mut establish_connection().await;
+        let store = AccountStore::new(conn);
+        let mut service = AccountingService::new(store, projection_conn);
 
         let account = service
             .deposit(account_id, amount, None, None, None)
@@ -94,9 +100,10 @@ impl AccountingServiceBase for AccountingServiceImpl {
             .parse::<BigDecimal>()
             .map_err(|_| Status::invalid_argument("Invalid amount"))?;
 
-        let store = AccountStore::default();
         let conn = &mut establish_connection().await;
-        let service = AccountingService::new(store, conn);
+        let projection_conn = &mut establish_connection().await;
+        let store = AccountStore::new(conn);
+        let mut service = AccountingService::new(store, projection_conn);
 
         let account = service
             .withdraw(account_id, amount, None, None, None)
@@ -117,9 +124,10 @@ impl AccountingServiceBase for AccountingServiceImpl {
     ) -> Result<Response<ListAccountsResponse>, Status> {
         let payload = request.into_inner();
 
-        let store = AccountStore::default();
         let conn = &mut establish_connection().await;
-        let mut service = AccountingService::new(store, conn);
+        let projection_conn = &mut establish_connection().await;
+        let store = AccountStore::new(conn);
+        let mut service = AccountingService::new(store, projection_conn);
 
         let account_infos = service
             .list_accounts(payload.page_number, payload.page_size)
@@ -146,6 +154,15 @@ impl AccountingServiceBase for AccountingServiceImpl {
 }
 
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let conn = establish_connection().await;
+    let mut async_wrapper: AsyncConnectionWrapper<AsyncPgConnection> =
+        AsyncConnectionWrapper::from(conn);
+    tokio::task::spawn_blocking(move || {
+        async_wrapper.run_pending_migrations(MIGRATIONS).unwrap();
+    })
+    .await
+    .expect("Error while run migration");
+
     let addr = "0.0.0.0:8104".parse().unwrap();
 
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();

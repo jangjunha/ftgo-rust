@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use bigdecimal::BigDecimal;
 use diesel::{prelude::*, ExpressionMethods, SelectableHelper};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use eventstore::ExpectedRevision;
 use ftgo_proto::{
     accounting_service::{accounting_event, AccountingEvent, CommandReplyRequested},
     common::CommandReply,
@@ -11,44 +10,48 @@ use ftgo_proto::{
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{models, projection, store::AccountStore};
+use crate::{
+    aggregate::account::{Account, AccountStore},
+    projection, schema,
+    store::event::{AppendCondition, EventStoreError},
+};
 
 pub struct AccountingService<'a> {
-    store: AccountStore,
-    conn: &'a mut AsyncPgConnection,
+    store: AccountStore<'a>,
+    projection_conn: &'a mut AsyncPgConnection,
 }
 
 impl AccountingService<'_> {
-    pub async fn create(
-        &self,
-        account_id: Option<Uuid>,
-    ) -> Result<models::Account, AccountingError> {
+    pub async fn create(&mut self, account_id: Option<Uuid>) -> Result<Account, AccountingError> {
         let account_id = account_id.unwrap_or_else(|| Uuid::new_v4());
-        let account = models::Account::new(account_id);
+        let account = Account::new(account_id);
 
         let event = account.open().map_err(|_| AccountingError::Internal)?;
 
-        let _ = self
-            .store
+        self.store
             .append(
                 &account_id,
                 &vec![(None, event.clone())],
-                ExpectedRevision::NoStream,
+                Some(AppendCondition::NoStream),
             )
-            .await;
+            .await
+            .map_err(|err| match err {
+                EventStoreError::AppendConditionFailed(_) => AccountingError::AccountAlreadyExists,
+                EventStoreError::UnexpectedInternal(_) => AccountingError::Internal,
+            })?;
 
         Ok(account.apply(event))
     }
 
     pub async fn deposit(
-        &self,
+        &mut self,
         account_id: Uuid,
         amount: BigDecimal,
         description: Option<String>,
         event_id: Option<Uuid>,
         command_metadata: Option<(&str, &HashMap<String, String>)>,
-    ) -> Result<models::Account, AccountingError> {
-        let account = self
+    ) -> Result<Account, AccountingError> {
+        let (account, last_sequence) = self
             .store
             .get(&account_id)
             .await
@@ -101,21 +104,25 @@ impl AccountingService<'_> {
 
         let _ = self
             .store
-            .append(&account_id, &events, ExpectedRevision::StreamExists)
+            .append(
+                &account_id,
+                &events,
+                Some(AppendCondition::ExpectLastSequence(last_sequence)),
+            )
             .await;
 
         Ok(events.into_iter().fold(account, |acc, (_, e)| acc.apply(e)))
     }
 
     pub async fn withdraw(
-        &self,
+        &mut self,
         account_id: Uuid,
         amount: BigDecimal,
         description: Option<String>,
         event_id: Option<Uuid>,
         command_metadata: Option<(&str, &HashMap<String, String>)>,
-    ) -> Result<models::Account, AccountingError> {
-        let account = self
+    ) -> Result<Account, AccountingError> {
+        let (account, last_sequence) = self
             .store
             .get(&account_id)
             .await
@@ -168,7 +175,11 @@ impl AccountingService<'_> {
 
         let _ = self
             .store
-            .append(&account_id, &events, ExpectedRevision::StreamExists)
+            .append(
+                &account_id,
+                &events,
+                Some(AppendCondition::ExpectLastSequence(last_sequence)),
+            )
             .await;
 
         Ok(events.into_iter().fold(account, |acc, (_, e)| acc.apply(e)))
@@ -179,11 +190,11 @@ impl AccountingService<'_> {
         account_id: &Uuid,
     ) -> Result<Option<projection::account_details::AccountDetail>, AccountingError> {
         use projection::account_details::AccountDetail;
-        use projection::schema::account_details;
+        use schema::account_details;
         match account_details::table
             .select(AccountDetail::as_select())
             .find(account_id)
-            .get_result(self.conn)
+            .get_result(self.projection_conn)
             .await
         {
             Ok(entity) => Ok(Some(entity)),
@@ -198,21 +209,23 @@ impl AccountingService<'_> {
         page_size: u32,
     ) -> Result<Vec<projection::account_infos::AccountInfo>, AccountingError> {
         use projection::account_infos::AccountInfo;
-        use projection::schema::account_infos;
-        account_infos::table
+        schema::account_infos::table
             .select(AccountInfo::as_select())
-            .order(account_infos::id.asc())
+            .order(schema::account_infos::id.asc())
             .offset(((page - 1) * page_size).into())
             .limit(page_size.into())
-            .get_results(self.conn)
+            .get_results(self.projection_conn)
             .await
             .map_err(|_| AccountingError::Internal)
     }
 }
 
 impl<'a> AccountingService<'a> {
-    pub fn new(store: AccountStore, conn: &'a mut AsyncPgConnection) -> Self {
-        Self { store, conn }
+    pub fn new(store: AccountStore<'a>, projection_conn: &'a mut AsyncPgConnection) -> Self {
+        Self {
+            store,
+            projection_conn,
+        }
     }
 }
 
@@ -220,4 +233,6 @@ impl<'a> AccountingService<'a> {
 pub enum AccountingError {
     #[error("Internal error")]
     Internal,
+    #[error("account already exists")]
+    AccountAlreadyExists,
 }

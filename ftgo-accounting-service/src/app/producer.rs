@@ -1,109 +1,63 @@
 use std::env;
 use std::time::Duration;
 
+use diesel_async::AsyncPgConnection;
 use dotenvy::dotenv;
-use eventstore::{Client, Position, StreamPosition, SubscribeToAllOptions, SubscriptionFilter};
+use ftgo_accounting_service::establish_connection;
+use ftgo_accounting_service::store::checkpoint::CheckpointStore;
 use ftgo_proto::accounting_service::{accounting_event, AccountingEvent};
 use ftgo_proto::common::CommandReply;
+use futures::TryStreamExt;
 use kafka::client::RequiredAcks;
-use kafka::producer::{Producer, Record};
+use kafka::producer::{AsBytes, Producer, Record};
 use prost::Message;
-
-use ftgo_accounting_service::establish_esdb_client;
-use ftgo_accounting_service::store::checkpoint::CheckpointStore;
 
 const ACCOUNTING_EVENT_TOPIC: &str = "accounting.event";
 const CHECKPOINT_NAME: &str = "accounting-producer";
 
-struct EventStoreProducer {
-    client: Client,
+struct EventStoreProducer<'a> {
+    store: CheckpointStore<'a>,
     kafka: Producer,
-    checkpoint_store: CheckpointStore,
 }
 
-impl EventStoreProducer {
-    async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+impl<'a> EventStoreProducer<'a> {
+    async fn new(conn: &'a mut AsyncPgConnection) -> Result<Self, Box<dyn std::error::Error>> {
         let kafka_url = env::var("KAFKA_URL").expect("KAFKA_URL must be set");
-
-        let client = establish_esdb_client();
         let kafka = Producer::from_hosts(vec![kafka_url])
             .with_ack_timeout(Duration::from_secs(1))
             .with_required_acks(RequiredAcks::One)
             .create()?;
 
-        let checkpoint_store = CheckpointStore::default();
+        let store = CheckpointStore::new(CHECKPOINT_NAME, conn);
 
-        Ok(Self {
-            client,
-            kafka,
-            checkpoint_store,
-        })
+        Ok(Self { store, kafka })
     }
 
     async fn process_events(&mut self) -> Result<bool, Box<dyn std::error::Error>> {
-        // Get the last checkpoint position
-        let last_position = self.checkpoint_store.load(CHECKPOINT_NAME).await?;
-
-        // Set up subscription options with filter for non-system events
-        let mut options = SubscribeToAllOptions::default()
-            .filter(SubscriptionFilter::on_event_type().regex("^[^\\$].*"));
-
-        if let Some(position) = last_position {
-            options = options.position(StreamPosition::Position(Position {
-                commit: position,
-                prepare: position,
-            }));
-        }
-
-        // Subscribe to all events from EventStore
-        let mut subscription = self.client.subscribe_to_all(&options).await;
-
         let mut processed_any = false;
-        let mut latest_position = None;
+        let mut stream = self.store.retrieve_events_after_checkpoint().await?;
+        while let Some(event) = stream.try_next().await? {
+            if event.stream_name.starts_with("Account-") {
+                let accounting_event = AccountingEvent::decode(event.payload.as_bytes()).unwrap();
 
-        while let Ok(resolved_event) = subscription.next().await {
-            let recorded_event = resolved_event.get_original_event();
-
-            // Only process accounting events (skip system events and checkpoints)
-            if recorded_event.stream_id.starts_with("Account-")
-                && !recorded_event.event_type.starts_with("$")
-                && recorded_event.event_type != "CheckpointStored"
-            {
-                if let Some(accounting_event) =
-                    self.try_decode_accounting_event(&recorded_event.data)
+                // Handle command reply events separately
+                if let Some(accounting_event::Event::CommandReplyRequested(reply_request)) =
+                    &accounting_event.event
                 {
-                    // Handle command reply events separately
-                    if let Some(accounting_event::Event::CommandReplyRequested(reply_request)) =
-                        &accounting_event.event
-                    {
-                        if let Some(reply) = &reply_request.reply {
-                            self.publish_command_reply(reply, &reply_request.reply_channel)?;
-                        }
-                    } else {
-                        // Publish regular accounting events
-                        self.publish_accounting_event(
-                            &accounting_event,
-                            &recorded_event.stream_id,
-                        )?;
+                    if let Some(reply) = &reply_request.reply {
+                        self.publish_command_reply(reply, &reply_request.reply_channel)?;
                     }
-                    processed_any = true;
-                    latest_position = Some(recorded_event.position.commit);
+                } else {
+                    // Publish regular accounting events
+                    self.publish_accounting_event(&accounting_event, &event.stream_name)?;
                 }
             }
-        }
 
-        // Update checkpoint if we processed any events
-        if let Some(position) = latest_position {
-            self.checkpoint_store
-                .store(CHECKPOINT_NAME, position)
-                .await?;
-        }
+            self.store.store(&event.stream_name, event.sequence).await?;
 
+            processed_any = true;
+        }
         Ok(processed_any)
-    }
-
-    fn try_decode_accounting_event(&self, data: &[u8]) -> Option<AccountingEvent> {
-        AccountingEvent::decode(data).ok()
     }
 
     fn publish_accounting_event(
@@ -164,10 +118,13 @@ impl EventStoreProducer {
 
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
+    let conn = &mut establish_connection().await;
 
     println!("Starting Accounting EventStore Producer...");
 
-    let mut producer = EventStoreProducer::new().await.expect("Failed to initiate");
+    let mut producer = EventStoreProducer::new(conn)
+        .await
+        .expect("Failed to initiate");
 
     loop {
         match producer.process_events().await.unwrap() {

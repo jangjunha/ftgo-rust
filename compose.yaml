@@ -355,8 +355,7 @@ services:
         condition: on-failure
         delay: 5s
     environment:
-      ESDB_URL: esdb://accounting-db:2113?tls=false
-      PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
+      DATABASE_URL: postgres://postgres@accounting-db/accounting
       KAFKA_URL: kafka:9094
     ports:
       - 8104:8104
@@ -379,8 +378,7 @@ services:
         condition: on-failure
         delay: 5s
     environment:
-      ESDB_URL: esdb://accounting-db:2113?tls=false
-      PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
+      DATABASE_URL: postgres://postgres@accounting-db/accounting
       KAFKA_URL: kafka:9094
     depends_on:
       - accounting-db
@@ -401,8 +399,7 @@ services:
         condition: on-failure
         delay: 5s
     environment:
-      ESDB_URL: esdb://accounting-db:2113?tls=false
-      PROJECTION_DATABASE_URL: postgres://postgres@accounting-projection-db/accounting
+      DATABASE_URL: postgres://postgres@accounting-db/accounting
     depends_on:
       - accounting-db
       - accounting-projection-db
@@ -422,7 +419,7 @@ services:
         condition: on-failure
         delay: 5s
     environment:
-      ESDB_URL: esdb://accounting-db:2113?tls=false
+      DATABASE_URL: postgres://postgres@accounting-db/accounting
       KAFKA_URL: kafka:9094
     depends_on:
       - accounting-db
@@ -512,36 +509,14 @@ services:
 
   accounting-db:
     restart: always
-    image: docker.eventstore.com/eventstore/eventstoredb-ee:24.10
-    environment:
-      - EVENTSTORE_CLUSTER_SIZE=1
-      - EVENTSTORE_RUN_PROJECTIONS=All
-      - EVENTSTORE_START_STANDARD_PROJECTIONS=true
-      - EVENTSTORE_NODE_PORT=2113
-      - EVENTSTORE_INSECURE=true
-      - EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP=true
-    ports:
-      - "8204:2113"
-    volumes:
-      - type: volume
-        source: accounting-db-data
-        target: /var/lib/eventstore
-      - type: volume
-        source: accounting-db-logs
-        target: /var/log/eventstore
-    profiles:
-      - ""
-      - infra
-  accounting-projection-db:
-    restart: always
     image: postgres:17-alpine
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_DB=accounting
     volumes:
-      - accounting-projection-db-data:/var/lib/postgresql/data
+      - accounting-db-data:/var/lib/postgresql/data
     ports:
-      - 8304:5432
+      - 8204:5432
     profiles:
       - ""
       - infra
@@ -632,5 +607,3 @@ volumes:
   order-db-data: {}
   delivery-db-data: {}
   accounting-db-data: {}
-  accounting-db-logs: {}
-  accounting-projection-db-data: {}

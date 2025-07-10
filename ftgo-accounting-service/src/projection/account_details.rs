@@ -6,7 +6,9 @@ use diesel_async::{
 use ftgo_proto::accounting_service::{accounting_event, AccountingEvent};
 use uuid::Uuid;
 
-use super::{schema::account_details, AccountingProjection, AccountingProjectionError};
+use super::{AccountingProjection, AccountingProjectionError};
+
+use crate::schema::account_details;
 
 #[derive(Queryable, Selectable, Identifiable, Insertable, Debug, PartialEq)]
 #[diesel(table_name = account_details)]
@@ -14,7 +16,7 @@ pub struct AccountDetail {
     pub id: Uuid,
     pub amount: BigDecimal,
     pub version: i64,
-    pub last_processed_position: i64,
+    pub last_processed_sequence: i64,
 }
 
 pub struct AccountDetailsProjection<'a> {
@@ -25,8 +27,7 @@ impl AccountingProjection for AccountDetailsProjection<'_> {
     async fn process(
         &mut self,
         event: &AccountingEvent,
-        stream_position: i64,
-        log_position: i64,
+        sequence: i64,
     ) -> Result<(), AccountingProjectionError> {
         match event.event.as_ref().unwrap() {
             accounting_event::Event::AccountOpened(event) => {
@@ -39,8 +40,8 @@ impl AccountingProjection for AccountDetailsProjection<'_> {
                 let entity = AccountDetail {
                     id: aid,
                     amount: BigDecimal::zero(),
-                    version: stream_position,
-                    last_processed_position: log_position,
+                    version: sequence,
+                    last_processed_sequence: sequence,
                 };
                 insert_into(account_details::table)
                     .values(&entity)
@@ -72,15 +73,15 @@ impl AccountingProjection for AccountDetailsProjection<'_> {
                 self.conn
                     .transaction(|conn| {
                         async move {
-                            if Self::was_already_applied(conn, &aid, log_position).await? {
+                            if Self::was_already_applied(conn, &aid, sequence).await? {
                                 return Ok(());
                             };
                             update(account_details::table)
                                 .set((
                                     account_details::amount
                                         .eq(account_details::amount + amount_expr),
-                                    account_details::version.eq(stream_position),
-                                    account_details::last_processed_position.eq(log_position),
+                                    account_details::version.eq(sequence),
+                                    account_details::last_processed_sequence.eq(sequence),
                                 ))
                                 .filter(account_details::id.eq(aid))
                                 .execute(conn)
@@ -115,15 +116,15 @@ impl AccountingProjection for AccountDetailsProjection<'_> {
                 self.conn
                     .transaction(|conn| {
                         async move {
-                            if Self::was_already_applied(conn, &aid, log_position).await? {
+                            if Self::was_already_applied(conn, &aid, sequence).await? {
                                 return Ok(());
                             };
                             update(account_details::table)
                                 .set((
                                     account_details::amount
                                         .eq(account_details::amount - amount_expr),
-                                    account_details::version.eq(stream_position),
-                                    account_details::last_processed_position.eq(log_position),
+                                    account_details::version.eq(sequence),
+                                    account_details::last_processed_sequence.eq(sequence),
                                 ))
                                 .filter(account_details::id.eq(aid))
                                 .execute(conn)
@@ -143,14 +144,14 @@ impl<'a> AccountDetailsProjection<'a> {
     async fn was_already_applied(
         conn: &mut AsyncPgConnection,
         account_id: &Uuid,
-        log_position: i64,
+        sequence: i64,
     ) -> Result<bool, diesel::result::Error> {
         let last = account_details::table
-            .select(account_details::last_processed_position)
+            .select(account_details::last_processed_sequence)
             .filter(account_details::id.eq(account_id))
             .get_result::<i64>(conn)
             .await?;
-        Ok(last >= log_position)
+        Ok(last >= sequence)
     }
 
     pub fn new(conn: &'a mut AsyncPgConnection) -> Self {

@@ -2,7 +2,7 @@ use std::{env, thread::sleep, time::Duration};
 
 use dotenvy::dotenv;
 use ftgo_accounting_service::{
-    projection::establish_connection, service::AccountingService, store::AccountStore,
+    aggregate::account::AccountStore, establish_connection, service::AccountingService,
     COMMAND_CHANNEL,
 };
 use ftgo_proto::{
@@ -37,7 +37,7 @@ impl AcceptedMessage {
         }
     }
 
-    async fn process(self, service: &AccountingService<'_>) -> Result<(), ()> {
+    async fn process(self, service: &mut AccountingService<'_>) -> Result<(), ()> {
         match self {
             AcceptedMessage::AccountingCommand(command_event) => {
                 let command_metadata = command_event
@@ -103,9 +103,10 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .create()
         .unwrap();
 
-    let store = AccountStore::default();
     let conn = &mut establish_connection().await;
-    let service = AccountingService::new(store, conn);
+    let projection_conn = &mut establish_connection().await;
+    let store = AccountStore::new(conn);
+    let mut service = AccountingService::new(store, projection_conn);
 
     loop {
         let mss = consumer.poll().expect("Cannont poll messages");
@@ -118,7 +119,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
             for m in ms.messages() {
                 match AcceptedMessage::from(ms.topic(), m.value) {
                     Some(message) => {
-                        message.process(&service).await.expect(&format!(
+                        message.process(&mut service).await.expect(&format!(
                             "Failed to process message {} {}",
                             ms.topic(),
                             m.offset

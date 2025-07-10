@@ -1,113 +1,68 @@
-use chrono::{DateTime, Utc};
-use eventstore::{
-    AppendToStreamOptions, EventData, ExpectedRevision, ReadStreamOptions, StreamMetadata,
-    StreamPosition,
+use chrono::Utc;
+use diesel::{insert_into, prelude::*, QueryResult};
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use futures::Stream;
+
+use crate::{
+    models::{Checkpoint, Event},
+    schema,
 };
-use serde::{Deserialize, Serialize};
 
-use crate::establish_esdb_client;
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct CheckpointStored {
+pub struct CheckpointStore<'a> {
     subscription_id: String,
-    position: u64,
-    checkpointed_at: DateTime<Utc>,
+    conn: &'a mut AsyncPgConnection,
 }
 
-pub struct CheckpointStore {
-    client: eventstore::Client,
-}
-
-impl CheckpointStore {
+impl<'a> CheckpointStore<'a> {
     pub async fn store(
-        &self,
-        subscription_id: &str,
-        position: u64,
-    ) -> Result<(), eventstore::Error> {
-        let stream_id = format!("checkpoint-{}", subscription_id);
-        let event = CheckpointStored {
-            subscription_id: subscription_id.to_string(),
-            position: position,
+        &mut self,
+        stream_name: &str,
+        sequence: i64,
+    ) -> Result<(), diesel::result::Error> {
+        let checkpoint = Checkpoint {
+            stream_name: stream_name.to_string(),
+            subscription_id: self.subscription_id.to_string(),
+            sequence,
             checkpointed_at: Utc::now(),
         };
-
-        match self
-            .client
-            .append_to_stream(
-                stream_id.clone(),
-                &AppendToStreamOptions::default().expected_revision(ExpectedRevision::StreamExists),
-                EventData::json("CheckpointStored", &event).unwrap(),
-            )
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(eventstore::Error::WrongExpectedVersion {
-                expected: _,
-                current: _,
-            }) => {
-                // WrongExpectedVersionException means that stream did not exist
-
-                // Set the checkpoint stream to have at most 1 event
-                // using stream metadata $maxCount property
-                let metadata = {
-                    let mut metadata = StreamMetadata::default();
-                    metadata.max_count = Some(1);
-                    metadata
-                };
-
-                self.client
-                    .set_stream_metadata(
-                        stream_id.clone(),
-                        &AppendToStreamOptions::default()
-                            .expected_revision(ExpectedRevision::NoStream),
-                        &metadata,
-                    )
-                    .await?;
-
-                // append event again expecting stream to not exist
-                self.client
-                    .append_to_stream(
-                        stream_id.clone(),
-                        &AppendToStreamOptions::default()
-                            .expected_revision(ExpectedRevision::NoStream),
-                        EventData::json("CheckpointStored", &event).unwrap(),
-                    )
-                    .await
-                    .map(|_| ())
-            }
-            Err(err) => Err(err),
-        }
-    }
-
-    pub async fn load(&self, subscription_id: &str) -> Result<Option<u64>, eventstore::Error> {
-        let stream_id = format!("checkpoint-{}", subscription_id);
-        let mut stream = self
-            .client
-            .read_stream(
-                stream_id,
-                &ReadStreamOptions::default().position(StreamPosition::End),
-            )
+        insert_into(schema::checkpoints::table)
+            .values(&checkpoint)
+            .on_conflict((
+                schema::checkpoints::stream_name,
+                schema::checkpoints::subscription_id,
+            ))
+            .do_update()
+            .set(&checkpoint)
+            .execute(self.conn)
             .await?;
-
-        match stream.next().await {
-            Ok(Some(event)) => {
-                let checkpoint = event
-                    .get_original_event()
-                    .as_json::<CheckpointStored>()
-                    .expect("Invalid checkpoint");
-                Ok(Some(checkpoint.position))
-            }
-            Ok(None) => Ok(None),
-            Err(eventstore::Error::ResourceNotFound) => Ok(None),
-            Err(err) => Err(err),
-        }
+        Ok(())
     }
-}
 
-impl Default for CheckpointStore {
-    fn default() -> Self {
+    pub async fn retrieve_events_after_checkpoint(
+        &mut self,
+    ) -> Result<impl Stream<Item = QueryResult<Event>>, diesel::result::Error> {
+        schema::events::table
+            .inner_join(schema::event_stream::table)
+            .left_join(
+                schema::checkpoints::table.on(schema::checkpoints::subscription_id
+                    .eq(&self.subscription_id)
+                    .and(schema::checkpoints::stream_name.eq(schema::event_stream::name))),
+            )
+            .filter(schema::events::sequence.gt(schema::checkpoints::sequence))
+            .or_filter(schema::checkpoints::sequence.is_null())
+            .order_by((
+                schema::events::stream_name.asc(),
+                schema::events::sequence.asc(),
+            ))
+            .select(Event::as_select())
+            .load_stream::<Event>(self.conn)
+            .await
+    }
+
+    pub fn new(subscription_id: &str, conn: &'a mut AsyncPgConnection) -> Self {
         Self {
-            client: establish_esdb_client(),
+            subscription_id: subscription_id.to_string(),
+            conn,
         }
     }
 }
