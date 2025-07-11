@@ -136,6 +136,26 @@ impl AcceptedMessage {
                                 };
                                 insert_into(tickets).values(&ticket).execute(conn)?;
 
+                                // Insert ticket line items
+                                if let Some(details) = command.details {
+                                    use schema::ticket_line_items::dsl::*;
+                                    let line_items: Vec<models::TicketLineItem> = details
+                                        .line_items
+                                        .into_iter()
+                                        .map(|item| models::TicketLineItem {
+                                            ticket_id: ticket.id,
+                                            id: Uuid::new_v4(),
+                                            quantity: item.quantity,
+                                            menu_item_id: item.menu_item_id,
+                                            name: item.name,
+                                        })
+                                        .collect();
+
+                                    insert_into(ticket_line_items)
+                                        .values(&line_items)
+                                        .execute(conn)?;
+                                }
+
                                 Self::reply(
                                     conn,
                                     &kitchen_command.reply_channel,
