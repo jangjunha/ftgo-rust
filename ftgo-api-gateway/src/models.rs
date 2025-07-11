@@ -241,6 +241,12 @@ pub struct TicketLineItem {
     pub name: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AcceptTicketRequest {
+    /// When the ticket should be ready for pickup
+    pub ready_by: DateTime<Utc>,
+}
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct KitchenTicketEdge {
     /// The ticket node

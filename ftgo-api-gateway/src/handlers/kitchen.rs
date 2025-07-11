@@ -9,6 +9,7 @@ use ftgo_proto::kitchen_service::{
     AcceptTicketPayload, GetTicketPayload, ListTicketPayload, PreparingTicketPayload,
     ReadyForPickupTicketPayload,
 };
+use prost_types::Timestamp;
 use serde::Deserialize;
 use tracing::instrument;
 
@@ -207,6 +208,7 @@ pub async fn get_ticket(
 #[utoipa::path(
     post,
     path = "/restaurants/{restaurant_id}/tickets/{ticket_id}/accept",
+    request_body = AcceptTicketRequest,
     responses(
         (status = 200, description = "Ticket accepted successfully", body = KitchenTicket),
         (status = 401, description = "Unauthorized", body = ApiErrorResponse),
@@ -227,6 +229,7 @@ pub async fn accept_ticket(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path((restaurant_id, ticket_id)): Path<(String, String)>,
+    Json(request): Json<AcceptTicketRequest>,
 ) -> Result<Json<KitchenTicket>, ApiError> {
     let mut auth_client = state.auth_client.clone();
 
@@ -235,9 +238,14 @@ pub async fn accept_ticket(
 
     let mut kitchen_client = state.kitchen_client.clone();
 
+    let ready_by_timestamp = Some(Timestamp {
+        seconds: request.ready_by.timestamp(),
+        nanos: request.ready_by.timestamp_subsec_nanos() as i32,
+    });
+
     let request = tonic::Request::new(AcceptTicketPayload {
         ticket_id: ticket_id.clone(),
-        ready_by: None, // No specific ready_by time for now
+        ready_by: ready_by_timestamp,
     });
 
     kitchen_client.accept_ticket(request).await.map_err(|e| {

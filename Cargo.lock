@@ -671,6 +671,7 @@ dependencies = [
  "chrono",
  "dotenvy",
  "ftgo-proto",
+ "prost-types",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
